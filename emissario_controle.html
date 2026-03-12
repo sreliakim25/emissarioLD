@@ -483,19 +483,22 @@ function trechoKPIs(t){
 }
 
 function overallKPIs(){
-  // Progresso geral: média ponderada dos % de cada trecho (via ATU quando existe)
+  // Suma o sumPeso/sumRealPct/sumPrevistoPct de TODAS as atividades de todos os trechos
+  // (equal to what each trecho card shows, just aggregated)
   let totalPeso=0, totalReal=0, totalPrev=0;
   TRECHOS.forEach(t=>{
-    const k=trechoKPIs(t);
-    totalPeso += k.tp;
-    totalReal += k.ta;
-    totalPrev += k.tpd;
+    t.atividades.forEach(at=>{
+      if(at.total<=0) return;
+      totalPeso += at.total;
+      totalReal += actualTotal(at.id);
+      totalPrev += plannedToDate(at, today);
+    });
   });
-  const pA=totalPeso>0?totalReal/totalPeso:0;
-  const pP=totalPeso>0?totalPrev/totalPeso:0;
-  const idp=pP>0.001?pA/pP:1.0;
-  const wdLeft=countWD(today,DEADLINE);
-  return {tp:totalPeso,ta:totalReal,tpd:totalPrev,pA,pP,idp,wdLeft};
+  const pA = totalPeso>0 ? totalReal/totalPeso  : 0;
+  const pP = totalPeso>0 ? totalPrev/totalPeso  : 0;
+  const idp = pP>0.001 ? pA/pP : (pA>0 ? 1.5 : 1.0);
+  const wdLeft = countWD(today, DEADLINE);
+  return {pA, pP, idp, wdLeft};
 }
 
 
@@ -564,23 +567,32 @@ function renderDash(){
   TRECHOS.forEach(t=>{
     const k=trechoKPIs(t);
     const st=idpColor(k.idp);
-    const delayed=k.projEnd&&k.projEnd>DEADLINE;
+    const delayed = k.projEnd && k.projEnd > DEADLINE;
+    const behindPlan = k.pP > 0.01 && k.pA < k.pP - 0.005; // realizado abaixo do previsto
+    const statusBadge = behindPlan
+      ? `<span style="font-size:.65rem;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:700;margin-left:8px">⚠ EM ATRASO</span>`
+      : (k.pP > 0.01 ? `<span style="font-size:.65rem;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:600;margin-left:8px">✓ No Prazo</span>` : '');
     let projH='';
     if(k.projEnd){
       const dly=Math.max(0,Math.ceil((k.projEnd-DEADLINE)/86400000));
+      const atuInfo = k.reqD ? ` &nbsp;&middot;&nbsp; necessário <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong> de Assentamento` : '';
       projH=`<div style="font-size:.75rem;color:${delayed?'#dc2626':'#16a34a'};margin-top:6px">
         ${delayed?'🚨':'✅'} Projeção: <strong>${ptDate(k.projEnd)}</strong>
-        ${delayed?` (${dly}d atraso · necessário ${fmtNum(k.reqD,1)} un/dia)`:'— No prazo'}</div>`;
+        ${delayed?` (${dly}d atraso${atuInfo})`:'— No prazo'}</div>`;
+    } else if(behindPlan) {
+      // Sem projeção ATU mas está atrasado no geral
+      projH=`<div style="font-size:.75rem;color:#dc2626;margin-top:6px">⚠ Ritmo atual abaixo do planejado — ajustar produção</div>`;
     }
-    html+=`<div class="tc" style="border-left-color:${k.idp>=0.95?'#15803d':k.idp>=0.80?'#c2410c':'var(--vmc-red)'}">
+    html+=`<div class="tc" style="border-left-color:${k.idp>=0.95?'#15803d':k.idp>=0.80?'#c2410c':'var(--vmc-red)'};${behindPlan?'background:rgba(139,26,26,.03)':''}">
       <div class="tc-hdr">
-        <div><div class="tc-name">${t.nome}</div>
+        <div><div class="tc-name">${t.nome}${statusBadge}</div>
           <div class="tc-meta"><span>📅 ${ptDate(new Date(t.inicio+'T00:00:00'))}</span><span>🏁 ${ptDate(new Date(t.fim+'T00:00:00'))}</span></div>
         </div>
         <span class="idp-badge ${st}">IDP ${fmtNum(k.idp,2)}</span>
       </div>
       <div style="font-size:.75rem;color:var(--vmc-gray);margin-bottom:5px">
-        Realizado: <strong style="color:var(--vmc-dark)">${fmtPct(k.pA)}</strong> &nbsp;·&nbsp; Previsto: <strong>${fmtPct(k.pP)}</strong>
+        Realizado: <strong style="color:var(--vmc-dark)">${fmtPct(k.pA)}</strong> &nbsp;&middot;&nbsp; Previsto: <strong>${fmtPct(k.pP)}</strong>
+        ${behindPlan ? `<span style="color:#dc2626;font-size:.68rem">&nbsp;(${fmtPct(k.pP - k.pA)} a recuperar)</span>` : ''}
       </div>
       <div class="pw2" title="Previsto"><div class="pb pl" style="width:${Math.min(k.pP*100,100)}%"></div></div>
       <div class="pw2" title="Realizado"><div class="pb ${st}" style="width:${Math.min(k.pA*100,100)}%"></div></div>
