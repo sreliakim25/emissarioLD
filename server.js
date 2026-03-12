@@ -46,7 +46,7 @@ app.get('/api/dashboard', async (req, res) => {
       if(!trechosMap[p.trecho_id]) {
          trechosMap[p.trecho_id] = {
            id: p.trecho_id,
-           nome: `Interdição ${p.trecho_id}`,
+           nome: `Trecho ${p.trecho_id}`,
            cor: p.trecho_id===1 ? '#8B1A1A' : p.trecho_id===2 ? '#6d1414' : '#5e1010',
            inicio: p.data_prevista, // Vai atualizar para pegar o menor e maior depois
            fim: p.data_prevista,

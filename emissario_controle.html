@@ -198,9 +198,9 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
     <span style="font-size:.78rem;color:var(--vmc-gray)" id="inputDayName"></span>
   </div>
   <div class="t-tabs">
-    <button class="t-tab act" onclick="selTrecho(1)">Interd. 1</button>
-    <button class="t-tab" onclick="selTrecho(2)">Interd. 2</button>
-    <button class="t-tab" onclick="selTrecho(3)">Interd. 3</button>
+    <button class="t-tab act" onclick="selTrecho(1)">Trecho 1</button>
+    <button class="t-tab" onclick="selTrecho(2)">Trecho 2</button>
+    <button class="t-tab" onclick="selTrecho(3)">Trecho 3</button>
   </div>
   <div id="actForm"></div>
   <button class="save-btn" onclick="saveProd()">💾 Salvar Produção do Dia</button>
@@ -499,7 +499,7 @@ function renderDash(){
   </div>`;
 
   // Trecho cards
-  html+=`<div class="sec-title" style="margin-top:4px">📍 Interdições</div>`;
+  html+=`<div class="sec-title" style="margin-top:4px">📍 Trechos</div>`;
   TRECHOS.forEach(t=>{
     const k=trechoKPIs(t);
     const st=idpColor(k.idp);
