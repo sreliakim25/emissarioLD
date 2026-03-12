@@ -166,16 +166,38 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 
 /* STATUS COLORS */
 .txt-g{color:var(--green)}.txt-o{color:var(--orange)}.txt-r{color:var(--vmc-red)}
-@media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:600px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:800px){.kpi-grid{grid-template-columns:repeat(5,1fr)}}
 </style>
 </head>
 <body>
 
 <div class="hdr">
   <div class="hdr-row">
-    <div>
-      <div class="hdr-logo"><span>⚙</span> Viana &amp; Moura</div>
-      <div class="hdr-sub">Emissário · Controle de Obra</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <!-- Logo V&M -->
+      <svg width="28" height="36" viewBox="0 0 56 72" xmlns="http://www.w3.org/2000/svg">
+        <!-- Espiga esquerda -->
+        <rect x="10" y="0" width="4" height="12" rx="2" fill="#8B1A1A"/>
+        <polygon points="4,14 14,14 10,22" fill="#8B1A1A"/><polygon points="14,14 18,14 14,22" fill="#E8A020"/>
+        <polygon points="2,22 12,22 8,30" fill="#8B1A1A"/><polygon points="12,22 16,22 12,30" fill="#E8A020"/>
+        <polygon points="0,30 10,30 6,38" fill="#8B1A1A"/><polygon points="10,30 14,30 10,38" fill="#E8A020"/>
+        <polygon points="0,38 10,38 6,46" fill="#8B1A1A"/><polygon points="10,38 14,38 10,46" fill="#E8A020"/>
+        <polygon points="2,46 12,46 8,54" fill="#8B1A1A"/><polygon points="12,46 16,46 12,54" fill="#E8A020"/>
+        <polygon points="4,54 14,54 10,62" fill="#8B1A1A"/><polygon points="14,54 18,54 14,62" fill="#E8A020"/>
+        <!-- Espiga direita -->
+        <rect x="42" y="0" width="4" height="12" rx="2" fill="#8B1A1A"/>
+        <polygon points="38,14 48,14 44,22" fill="#E8A020"/><polygon points="48,14 52,14 48,22" fill="#8B1A1A"/>
+        <polygon points="40,22 50,22 46,30" fill="#E8A020"/><polygon points="50,22 54,22 50,30" fill="#8B1A1A"/>
+        <polygon points="42,30 52,30 48,38" fill="#E8A020"/><polygon points="52,30 56,30 52,38" fill="#8B1A1A"/>
+        <polygon points="42,38 52,38 48,46" fill="#E8A020"/><polygon points="52,38 56,38 52,46" fill="#8B1A1A"/>
+        <polygon points="40,46 50,46 46,54" fill="#E8A020"/><polygon points="50,46 54,46 50,54" fill="#8B1A1A"/>
+        <polygon points="38,54 48,54 44,62" fill="#E8A020"/><polygon points="48,54 52,54 48,62" fill="#8B1A1A"/>
+      </svg>
+      <div>
+        <div class="hdr-logo" style="font-size:1.05rem">Viana <span>&amp;</span> Moura</div>
+        <div class="hdr-sub">EMISSÁRIO LEÃO DOURADO</div>
+      </div>
     </div>
     <div class="hdr-right">
       <div class="hdr-date" id="hdrDate"></div>
@@ -535,10 +557,17 @@ function renderDash(){
     html+=`<div class="alert suc"><span class="alert-ico">✅</span><div><div class="alert-t">Execução no prazo</div><div class="alert-b">Todos os trechos estão com desempenho adequado para entrega até 30/04/2026.</div></div></div>`;
   }
 
-  // KPIs
+  // KPIs — calcular metragem ATU total e realizada
+  let atuTotalAll=0, atuRealAll=0;
+  TRECHOS.forEach(t=>{
+    const atu=t.atividades.find(at=>at.id&&at.id.includes('ATU'));
+    if(atu){atuTotalAll+=atu.total; atuRealAll+=actualTotal(atu.id);}
+  });
+  const atuColor = atuRealAll>=atuTotalAll?'g':atuRealAll>0?'o':'r';
   html+=`<div class="kpi-grid">
     <div class="kpi"><div class="kpi-lb">Realizado</div><div class="kpi-v ${st}">${fmtPct(ov.pA)}</div><div class="kpi-u">do total geral</div></div>
     <div class="kpi"><div class="kpi-lb">IDP Global</div><div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div><div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div></div>
+    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">🔩 Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">metros de tubo</div></div>
     <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v">${ov.wdLeft}</div><div class="kpi-u">dias úteis até 30/04</div></div>
     <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
   </div>`;
