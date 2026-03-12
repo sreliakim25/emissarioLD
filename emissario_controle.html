@@ -214,9 +214,17 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 
 <!-- CRONOGRAMA -->
 <div class="scr" id="scr-cronograma">
-  <div class="sec-title">📅 Cronograma Semanal Detalhado</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="sec-title" style="margin-bottom:0;border:none;padding:0">📅 Cronograma Semanal</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="cronNav(-1)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--vmc-border);background:var(--vmc-card);color:var(--vmc-dark);font-size:.82rem;cursor:pointer;font-family:'Crimson Pro',serif">‹ Anterior</button>
+      <button onclick="cronWeekOffset=0;renderCron()" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--vmc-ink);background:var(--vmc-ink);color:#fff;font-size:.75rem;cursor:pointer;font-family:'Crimson Pro',serif">Hoje</button>
+      <button onclick="cronNav(1)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--vmc-border);background:var(--vmc-card);color:var(--vmc-dark);font-size:.82rem;cursor:pointer;font-family:'Crimson Pro',serif">Próxima ›</button>
+    </div>
+  </div>
   <div id="cronContent"></div>
 </div>
+
 
 <!-- RESUMO -->
 <div class="scr" id="scr-resumo">
@@ -682,77 +690,118 @@ function renderGantt(){
   document.getElementById('ganttContent').innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════════
-// RENDER: CRONOGRAMA
-// ═══════════════════════════════════════════════════
-function renderCron(){
-  const wkMon=getWeekMon(today);
-  let html='';
-  for(let w=0;w<4;w++){
-    const mon=new Date(wkMon); mon.setDate(wkMon.getDate()+w*7);
-    const fri=new Date(mon); fri.setDate(mon.getDate()+4);
-    const wn=getWeekNum(mon);
-    const isPast=fri<today;
+// Offset de semana para navegação (0 = semana atual, -1 = anterior, +1 = próxima, etc.)
+let cronWeekOffset = 0;
 
-    // Meta semanal
-    let metaLines='';
-    TRECHOS.forEach(t=>t.atividades.forEach(at=>{
-      const pw=plannedForWeek(at,mon,fri);
-      const aw=actualForWeek(at.id,mon,fri);
-      if(pw>0.05){
-        const pctW=pw>0?aw/pw:0;
-        const color=pctW>=0.9?'#166534':pctW>=0.7?'#9a3412':'#991b1b';
-        metaLines+=`<div style="font-size:.72rem;padding:2px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between">
+function renderCron(){
+  const wkMon = getWeekMon(today);
+  // Offset de navegação
+  const baseDate = new Date(wkMon);
+  baseDate.setDate(wkMon.getDate() + cronWeekOffset * 7);
+
+  // Renderizar 2 semanas: a selecionada e a seguinte
+  let html = '';
+
+  for(let w = 0; w < 2; w++){
+    const mon = new Date(baseDate); mon.setDate(baseDate.getDate() + w * 7);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    const wn = getWeekNum(mon);
+    const isPast = fri < today;
+    const isCurrent = fd(mon) <= fd(today) && fd(today) <= fd(fri);
+
+    // --- META SEMANAL ---
+    let metaLines = '';
+    TRECHOS.forEach(t => t.atividades.forEach(at => {
+      const pw = plannedForWeek(at, mon, fri);
+      const aw = actualForWeek(at.id, mon, fri);
+      if(pw > 0.05 || aw > 0){
+        const pctW = pw > 0 ? aw / pw : (aw > 0 ? 1 : 0);
+        const color = pctW >= 0.9 ? '#166534' : pctW >= 0.7 ? '#9a3412' : isPast ? '#991b1b' : 'var(--vmc-gray)';
+        const awFmt = `<strong style="color:${color}">${fmtNum(aw,1)}</strong>`;
+        const pwFmt = fmtNum(pw,1);
+        metaLines += `<div style="font-size:.72rem;padding:3px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center">
           <span style="color:var(--vmc-gray)">T${t.id} · ${at.nome}</span>
-          <span style="color:${isPast?color:'var(--vmc-red)'};font-weight:600">${fmtNum(pw,1)} ${at.un}${isPast?` (${fmtNum(aw,1)})`:''}</span>
+          <span style="white-space:nowrap">
+            <span style="color:var(--vmc-gray-l)">Plan: ${pwFmt}</span>
+            &nbsp;·&nbsp;
+            <span>Real: ${awFmt} ${at.un}</span>
+            ${aw > 0 ? `<span style="font-size:.6rem;margin-left:4px;padding:1px 5px;border-radius:8px;background:${pctW>=0.9?'#dcfce7':pctW>=0.7?'#fef3c7':'#fee2e2'};color:${color}">${(pctW*100).toFixed(0)}%</span>` : ''}
+          </span>
         </div>`;
       }
     }));
 
-    // Dias
-    let daysH='';
-    for(let dd=0;dd<5;dd++){
-      const day=new Date(mon); day.setDate(mon.getDate()+dd);
-      const ds=fd(day);
-      const isT=ds===fd(today);
-      const isH=!isWD(day)&&day.getDay()!==0&&day.getDay()!==6;
-      const isP=day<today;
-      let tasks='';
-      TRECHOS.forEach(t=>t.atividades.forEach(at=>{
-        const pd=plannedForDay(at,ds);
-        if(pd>0.05){
-          const ad=actualForDay(at.id,ds);
-          const done=ad>0;
-          const miss=isP&&!done&&!isH;
-          tasks+=`<span style="font-size:.65rem;padding:1px 5px;margin:1px 2px 1px 0;border-radius:3px;background:${done?'#dcfce7':miss?'#fee2e2':'#f1f5f9'};color:${done?'#166534':miss?'#991b1b':'#374151'};display:inline-block">
-            T${t.id} ${at.nome.substring(0,11)}… ${fmtNum(pd,0)} ${at.un}${done?' ✓':''}
+    // --- DIAS ---
+    let daysH = '';
+    for(let dd = 0; dd < 5; dd++){
+      const day = new Date(mon); day.setDate(mon.getDate() + dd);
+      const ds = fd(day);
+      const isT = ds === fd(today);
+      const isH = !isWD(day) && day.getDay() !== 0 && day.getDay() !== 6;
+      const isP = day < today;
+      let tasks = '';
+
+      TRECHOS.forEach(t => t.atividades.forEach(at => {
+        const pd = plannedForDay(at, ds);
+        const ad = actualForDay(at.id, ds);
+        if(pd > 0.05 || ad > 0){
+          const done = ad > 0;
+          const miss = isP && !done && !isH;
+          const pct = pd > 0 ? ad/pd : (ad > 0 ? 1 : 0);
+          const bg = done ? '#dcfce7' : miss ? '#fee2e2' : '#f1f5f9';
+          const col = done ? '#166534' : miss ? '#991b1b' : '#374151';
+          tasks += `<span style="font-size:.65rem;padding:2px 6px;margin:1px 2px 1px 0;border-radius:4px;background:${bg};color:${col};display:inline-flex;align-items:center;gap:3px">
+            <span>T${t.id} ${at.nome.substring(0,10)}…</span>
+            <span style="font-weight:600">${fmtNum(pd,0)} ${at.un}</span>
+            ${done ? `<span style="background:rgba(22,101,52,.15);padding:0 3px;border-radius:3px;font-size:.58rem">✓ ${fmtNum(ad,0)}</span>` : miss ? `<span style="font-size:.58rem">⚠ 0</span>` : ''}
           </span>`;
         }
       }));
-      daysH+=`<div style="padding:8px 0;border-bottom:1px solid var(--vmc-cream);background:${isH?'#fff7ed':isT?'#fffbeb':''}">
+
+      daysH += `<div style="padding:8px 0;border-bottom:1px solid var(--vmc-border);background:${isH?'#fff7ed':isT?'#fff8e1':''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:.8rem;font-weight:${isT?600:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
-          ${isH?'<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO</span>':''}
-          ${isT?'<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>':''}
+          <span style="font-size:.8rem;font-weight:${isT?700:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
+          ${isH ? '<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO</span>' : ''}
+          ${isT ? '<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>' : ''}
         </div>
-        <div>${tasks||'<span style="font-size:.68rem;color:#9ca3af">Sem atividades previstas</span>'}</div>
+        <div>${tasks || '<span style="font-size:.68rem;color:#9ca3af">Sem atividades previstas</span>'}</div>
       </div>`;
     }
 
-    html+=`<div class="wk-card">
+    const statusLabel = isCurrent ? 'Semana atual' : isPast ? 'Concluída' : 'Futura';
+    const statusColor = isCurrent ? 'var(--vmc-gold)' : isPast ? '#94a3b8' : '#6ee7b7';
+
+    html += `<div class="wk-card">
       <div class="wk-bar">
         <span class="wk-lbl">Semana ${wn} — ${ptDate(mon)} a ${ptDate(fri)}</span>
-        <span class="wk-meta">${isPast?'Concluída':'Próxima'}</span>
+        <span class="wk-meta" style="background:rgba(255,255,255,.15)">${statusLabel}</span>
       </div>
-      <div style="padding:10px 15px 4px;background:#fafaf8;border-bottom:1px solid var(--vmc-cream)">
-        <div style="font-size:.65rem;color:var(--vmc-gray);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Metas da Semana${isPast?' (Previsto · Realizado)':''}</div>
-        ${metaLines||'<div style="font-size:.72rem;color:#9ca3af">Sem atividades previstas</div>'}
+      <div style="padding:10px 15px 4px;background:#fafaf8;border-bottom:1px solid var(--vmc-border)">
+        <div style="font-size:.65rem;color:var(--vmc-gray);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between">
+          <span>Metas da Semana</span>
+          <span style="color:${statusColor}">${statusLabel}</span>
+        </div>
+        ${metaLines || '<div style="font-size:.72rem;color:#9ca3af">Sem atividades previstas</div>'}
       </div>
       <div style="padding:4px 15px 8px">${daysH}</div>
     </div>`;
   }
-  document.getElementById('cronContent').innerHTML=html;
+
+  // Legenda
+  html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.72rem;color:var(--vmc-gray);padding:6px 2px 16px">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#dcfce7;border-radius:3px;display:inline-block"></span>Realizado</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#fee2e2;border-radius:3px;display:inline-block"></span>Não realizado</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#f1f5f9;border-radius:3px;display:inline-block"></span>Previsto</span>
+  </div>`;
+
+  document.getElementById('cronContent').innerHTML = html;
 }
+
+function cronNav(dir){
+  cronWeekOffset += dir;
+  renderCron();
+}
+
 
 // ═══════════════════════════════════════════════════
 // RENDER: RESUMO SEMANAL
