@@ -420,31 +420,75 @@ function idpColor(v){ return v>=0.95?'g':v>=0.80?'o':'r'; }
 function idpLabel(v){ return v>=0.95?'✓ No Prazo':v>=0.80?'⚠ Atenção':'🚨 Atrasado'; }
 
 function trechoKPIs(t){
-  let tp=0, ta=0, tpd=0;
+  // ── 1. Progresso ponderado (% de cada atividade × peso no total volumétrico) ──
+  // Usa apenas atividades homogêneas dentro do mesmo trecho para % geral
+  let sumPeso=0, sumRealPct=0, sumPrevistoPct=0;
   t.atividades.forEach(at=>{
-    tp+=at.total; ta+=actualTotal(at.id); tpd+=plannedToDate(at,today);
+    if(at.total<=0) return;
+    const aRealizado = actualTotal(at.id);
+    const aPrevisto  = plannedToDate(at, today);
+    sumPeso       += at.total;
+    sumRealPct    += (aRealizado/at.total) * at.total;   // contribuição ponderada realizado
+    sumPrevistoPct+= (aPrevisto /at.total) * at.total;   // contribuição ponderada previsto
   });
-  const pA=tp>0?ta/tp:0, pP=tp>0?tpd/tp:0;
-  const idp=pP>0.001?pA/pP:(pA>0?1.5:1.0);
-  const elapsed=countWD(new Date(t.inicio+'T00:00:00'),today);
-  const avgD=elapsed>0?ta/elapsed:null;
-  const rem=tp-ta;
-  let projEnd=null;
-  if(avgD&&avgD>0&&rem>0) projEnd=addWD(today,Math.ceil(rem/avgD));
-  else if(rem<=0) projEnd=new Date(today);
-  const wdLeft=countWD(today,DEADLINE);
-  const reqD=wdLeft>0&&rem>0?rem/wdLeft:null;
-  return {tp,ta,tpd,pA,pP,idp,projEnd,reqD,avgD,rem,wdLeft};
+  const pA = sumPeso>0 ? sumRealPct/sumPeso  : 0;
+  const pP = sumPeso>0 ? sumPrevistoPct/sumPeso : 0;
+  const idp = pP>0.001 ? pA/pP : (pA>0 ? 1.5 : 1.0);
+
+  // ── 2. Atividade âncora: Assentamento de Tubulação (sigla contém "ATU") ──
+  const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
+
+  let projEnd=null, reqD=null, avgD=null, rem=null, atuTotal=0, atuReal=0, atuUn='m';
+  const wdLeft = countWD(today, DEADLINE);
+
+  if(atu && atu.total>0){
+    atuTotal = atu.total;
+    atuUn    = atu.un || 'm';
+    atuReal  = actualTotal(atu.id);
+    rem      = atuTotal - atuReal;
+
+    // Produtividade média real em m/dia (apenas dias úteis desde o início do trecho)
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), today);
+    avgD = elapsed>0 ? atuReal/elapsed : null;
+
+    // Projeção de conclusão no ritmo atual
+    if(avgD && avgD>0 && rem>0)  projEnd = addWD(today, Math.ceil(rem/avgD));
+    else if(rem<=0)               projEnd = new Date(today);
+
+    // Metro/dia necessário para cumprir o prazo
+    reqD = wdLeft>0 && rem>0 ? rem/wdLeft : null;
+  } else {
+    // Fallback sem ATU: usa ponderado genérico
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), today);
+    avgD = null;
+    rem  = sumPeso>0 ? (1-pA)*sumPeso : null;
+  }
+
+  // tp/ta para compatibilidade com overallKPIs (usa valores brutos de ATU se existir, senão ponderado)
+  const tp = atuTotal || sumPeso;
+  const ta = atuReal  || sumRealPct;
+  const tpd= atu ? plannedToDate(atu, today) : sumPrevistoPct;
+
+  return {tp, ta, tpd, pA, pP, idp, projEnd, reqD, avgD, rem,
+          wdLeft, atuTotal, atuReal, atuUn};
 }
 
 function overallKPIs(){
-  let tp=0,ta=0,tpd=0;
-  TRECHOS.forEach(t=>{const k=trechoKPIs(t);tp+=k.tp;ta+=k.ta;tpd+=k.tpd;});
-  const pA=tp>0?ta/tp:0, pP=tp>0?tpd/tp:0;
+  // Progresso geral: média ponderada dos % de cada trecho (via ATU quando existe)
+  let totalPeso=0, totalReal=0, totalPrev=0;
+  TRECHOS.forEach(t=>{
+    const k=trechoKPIs(t);
+    totalPeso += k.tp;
+    totalReal += k.ta;
+    totalPrev += k.tpd;
+  });
+  const pA=totalPeso>0?totalReal/totalPeso:0;
+  const pP=totalPeso>0?totalPrev/totalPeso:0;
   const idp=pP>0.001?pA/pP:1.0;
   const wdLeft=countWD(today,DEADLINE);
-  return {tp,ta,tpd,pA,pP,idp,wdLeft};
+  return {tp:totalPeso,ta:totalReal,tpd:totalPrev,pA,pP,idp,wdLeft};
 }
+
 
 // ═══════════════════════════════════════════════════
 // RENDER: DASHBOARD
@@ -471,23 +515,24 @@ function renderDash(){
     const k=trechoKPIs(t);
     if(k.idp<0.80&&k.projEnd&&k.projEnd>DEADLINE){
       const delay=Math.ceil((k.projEnd-DEADLINE)/86400000);
+      const ritmoAtual = k.avgD!=null ? `Ritmo atual: <strong>${fmtNum(k.avgD,1)} ${k.atuUn}/dia</strong> de Assentamento. ` : '';
       html+=`<div class="alert dan">
         <span class="alert-ico">🚨</span>
         <div><div class="alert-t">${t.nome} — Prazo em Risco</div>
-        <div class="alert-b">Projeção de conclusão: <strong>${ptDate(k.projEnd)}</strong> (${delay} dia${delay>1?'s':''} após 30/04).<br>
-        Prod. diária necessária: <strong>${fmtNum(k.reqD,1)} un/dia</strong> em <strong>${k.wdLeft} jornadas</strong>.<br>
-        📌 Ampliar frente de trabalho ou aumentar produtividade diária.</div></div>
+        <div class="alert-b">Projeção de conclusão (Assentamento de Tubulação): <strong>${ptDate(k.projEnd)}</strong> (${delay} dia${delay>1?'s':''} após 30/04).<br>
+        ${ritmoAtual}Meta necessária: <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong> de Assentamento em <strong>${k.wdLeft} jornadas</strong>.<br>
+        📌 Ampliar frente de trabalho ou aumentar produtividade de assentamento.</div></div>
       </div>`;
     } else if(k.idp<0.95&&k.idp>=0.80){
       html+=`<div class="alert wrn">
         <span class="alert-ico">⚠️</span>
         <div><div class="alert-t">${t.nome} — Atenção ao Ritmo</div>
-        <div class="alert-b">IDP: ${fmtNum(k.idp,2)} — Levemente abaixo do planejado. Meta: <strong>${fmtNum(k.reqD,1)} un/dia</strong> para cumprir o prazo.</div></div>
+        <div class="alert-b">IDP: ${fmtNum(k.idp,2)} — Abaixo do planejado. Meta Assentamento: <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong> para cumprir o prazo.</div></div>
       </div>`;
     }
   });
   if(!TRECHOS.some(t=>{const k=trechoKPIs(t);return k.idp<0.95;})){
-    html+=`<div class="alert suc"><span class="alert-ico">✅</span><div><div class="alert-t">Execução no prazo</div><div class="alert-b">Todas as interdições estão com desempenho adequado para entrega até 30/04/2026.</div></div></div>`;
+    html+=`<div class="alert suc"><span class="alert-ico">✅</span><div><div class="alert-t">Execução no prazo</div><div class="alert-b">Todos os trechos estão com desempenho adequado para entrega até 30/04/2026.</div></div></div>`;
   }
 
   // KPIs
