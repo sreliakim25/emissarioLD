@@ -511,6 +511,9 @@ function renderDash(){
 
   const behindGlobal = ov.pP > 0.01 && ov.pA < ov.pP - 0.005;
   const gap = ov.pP - ov.pA;
+  const anyDelay = TRECHOS.some(t=>{const k=trechoKPIs(t);return k.projEnd&&k.projEnd>DEADLINE;});
+  const chipCls = anyDelay?'bad':behindGlobal?'warn':'ok';
+  const chipTxt = anyDelay?'⚠ Prazo em risco!':behindGlobal?'⚠ Em atraso':'✓ Prazo: 30/04';
 
   // Coletar info de atraso por trecho
   let delaySummary = '';
