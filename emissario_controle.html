@@ -175,24 +175,37 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <div class="hdr">
   <div class="hdr-row">
     <div style="display:flex;align-items:center;gap:10px">
-      <!-- Logo V&M -->
-      <svg width="28" height="36" viewBox="0 0 56 72" xmlns="http://www.w3.org/2000/svg">
-        <!-- Espiga esquerda -->
-        <rect x="10" y="0" width="4" height="12" rx="2" fill="#8B1A1A"/>
-        <polygon points="4,14 14,14 10,22" fill="#8B1A1A"/><polygon points="14,14 18,14 14,22" fill="#E8A020"/>
-        <polygon points="2,22 12,22 8,30" fill="#8B1A1A"/><polygon points="12,22 16,22 12,30" fill="#E8A020"/>
-        <polygon points="0,30 10,30 6,38" fill="#8B1A1A"/><polygon points="10,30 14,30 10,38" fill="#E8A020"/>
-        <polygon points="0,38 10,38 6,46" fill="#8B1A1A"/><polygon points="10,38 14,38 10,46" fill="#E8A020"/>
-        <polygon points="2,46 12,46 8,54" fill="#8B1A1A"/><polygon points="12,46 16,46 12,54" fill="#E8A020"/>
-        <polygon points="4,54 14,54 10,62" fill="#8B1A1A"/><polygon points="14,54 18,54 14,62" fill="#E8A020"/>
-        <!-- Espiga direita -->
-        <rect x="42" y="0" width="4" height="12" rx="2" fill="#8B1A1A"/>
-        <polygon points="38,14 48,14 44,22" fill="#E8A020"/><polygon points="48,14 52,14 48,22" fill="#8B1A1A"/>
-        <polygon points="40,22 50,22 46,30" fill="#E8A020"/><polygon points="50,22 54,22 50,30" fill="#8B1A1A"/>
-        <polygon points="42,30 52,30 48,38" fill="#E8A020"/><polygon points="52,30 56,30 52,38" fill="#8B1A1A"/>
-        <polygon points="42,38 52,38 48,46" fill="#E8A020"/><polygon points="52,38 56,38 52,46" fill="#8B1A1A"/>
-        <polygon points="40,46 50,46 46,54" fill="#E8A020"/><polygon points="50,46 54,46 50,54" fill="#8B1A1A"/>
-        <polygon points="38,54 48,54 44,62" fill="#E8A020"/><polygon points="48,54 52,54 48,62" fill="#8B1A1A"/>
+      <!-- Logo V&M: dois feixes de trigo -->
+      <svg width="32" height="42" viewBox="0 0 44 58" xmlns="http://www.w3.org/2000/svg">
+        <!-- ESPIGA ESQUERDA (centro x=11) -->
+        <rect x="9" y="0" width="4" height="9" rx="2" fill="#8B1A1A"/>
+        <!-- Chevrons: par de paralelogramos formando V -->
+        <!-- Linha 1 -->
+        <polygon points="2,12 11,12 11,21 4,21" fill="#8B1A1A"/>
+        <polygon points="11,12 20,12 18,21 11,21" fill="#E8A020"/>
+        <!-- Linha 2 -->
+        <polygon points="2,23 11,23 11,32 4,32" fill="#E8A020"/>
+        <polygon points="11,23 20,23 18,32 11,32" fill="#8B1A1A"/>
+        <!-- Linha 3 -->
+        <polygon points="2,34 11,34 11,43 4,43" fill="#8B1A1A"/>
+        <polygon points="11,34 20,34 18,43 11,43" fill="#E8A020"/>
+        <!-- Linha 4 -->
+        <polygon points="2,45 11,45 11,54 4,54" fill="#E8A020"/>
+        <polygon points="11,45 20,45 18,54 11,54" fill="#8B1A1A"/>
+        <!-- ESPIGA DIREITA (centro x=33) -->
+        <rect x="31" y="0" width="4" height="9" rx="2" fill="#8B1A1A"/>
+        <!-- Linha 1 (cores invertidas) -->
+        <polygon points="24,12 33,12 33,21 26,21" fill="#E8A020"/>
+        <polygon points="33,12 42,12 40,21 33,21" fill="#8B1A1A"/>
+        <!-- Linha 2 -->
+        <polygon points="24,23 33,23 33,32 26,32" fill="#8B1A1A"/>
+        <polygon points="33,23 42,23 40,32 33,32" fill="#E8A020"/>
+        <!-- Linha 3 -->
+        <polygon points="24,34 33,34 33,43 26,43" fill="#E8A020"/>
+        <polygon points="33,34 42,34 40,43 33,43" fill="#8B1A1A"/>
+        <!-- Linha 4 -->
+        <polygon points="24,45 33,45 33,54 26,54" fill="#8B1A1A"/>
+        <polygon points="33,45 42,45 40,54 33,54" fill="#E8A020"/>
       </svg>
       <div>
         <div class="hdr-logo" style="font-size:1.05rem">Viana <span>&amp;</span> Moura</div>
@@ -486,10 +499,14 @@ function trechoKPIs(t){
     rem  = sumPeso>0 ? (1-pA)*sumPeso : null;
   }
 
-  // tp/ta para compatibilidade com overallKPIs (usa valores brutos de ATU se existir, senão ponderado)
-  const tp = atuTotal || sumPeso;
-  const ta = atuReal  || sumRealPct;
-  const tpd= atu ? plannedToDate(atu, today) : sumPrevistoPct;
+  // tp/ta para overallKPIs - usa ATU quando existe (ternário explícito para evitar bug com zero)
+  const tp  = atu ? atuTotal : sumPeso;
+  const ta  = atu ? atuReal  : sumRealPct;
+  const tpd = atu ? plannedToDate(atu, today) : sumPrevistoPct;
+  // pA/pP para o card do trecho: % ponderada por atividade (unidade-independente)
+  // IDP baseado no ponderado (não no ATU bruto) para representar saúde geral do trecho
+  const idpCard = pP > 0.001 ? pA/pP : (pA > 0 ? 1.0 : 1.0);
+
 
   return {tp, ta, tpd, pA, pP, idp, projEnd, reqD, avgD, rem,
           wdLeft, atuTotal, atuReal, atuUn};
