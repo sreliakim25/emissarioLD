@@ -175,38 +175,8 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <div class="hdr">
   <div class="hdr-row">
     <div style="display:flex;align-items:center;gap:10px">
-      <!-- Logo V&M: dois feixes de trigo -->
-      <svg width="32" height="42" viewBox="0 0 44 58" xmlns="http://www.w3.org/2000/svg">
-        <!-- ESPIGA ESQUERDA (centro x=11) -->
-        <rect x="9" y="0" width="4" height="9" rx="2" fill="#8B1A1A"/>
-        <!-- Chevrons: par de paralelogramos formando V -->
-        <!-- Linha 1 -->
-        <polygon points="2,12 11,12 11,21 4,21" fill="#8B1A1A"/>
-        <polygon points="11,12 20,12 18,21 11,21" fill="#E8A020"/>
-        <!-- Linha 2 -->
-        <polygon points="2,23 11,23 11,32 4,32" fill="#E8A020"/>
-        <polygon points="11,23 20,23 18,32 11,32" fill="#8B1A1A"/>
-        <!-- Linha 3 -->
-        <polygon points="2,34 11,34 11,43 4,43" fill="#8B1A1A"/>
-        <polygon points="11,34 20,34 18,43 11,43" fill="#E8A020"/>
-        <!-- Linha 4 -->
-        <polygon points="2,45 11,45 11,54 4,54" fill="#E8A020"/>
-        <polygon points="11,45 20,45 18,54 11,54" fill="#8B1A1A"/>
-        <!-- ESPIGA DIREITA (centro x=33) -->
-        <rect x="31" y="0" width="4" height="9" rx="2" fill="#8B1A1A"/>
-        <!-- Linha 1 (cores invertidas) -->
-        <polygon points="24,12 33,12 33,21 26,21" fill="#E8A020"/>
-        <polygon points="33,12 42,12 40,21 33,21" fill="#8B1A1A"/>
-        <!-- Linha 2 -->
-        <polygon points="24,23 33,23 33,32 26,32" fill="#8B1A1A"/>
-        <polygon points="33,23 42,23 40,32 33,32" fill="#E8A020"/>
-        <!-- Linha 3 -->
-        <polygon points="24,34 33,34 33,43 26,43" fill="#E8A020"/>
-        <polygon points="33,34 42,34 40,43 33,43" fill="#8B1A1A"/>
-        <!-- Linha 4 -->
-        <polygon points="24,45 33,45 33,54 26,54" fill="#8B1A1A"/>
-        <polygon points="33,45 42,45 40,54 33,54" fill="#E8A020"/>
-      </svg>
+      <!-- Logo V&M -->
+      <img src="/logo.png" alt="Viana &amp; Moura" height="40" style="display:block"/>
       <div>
         <div class="hdr-logo" style="font-size:1.05rem">Viana <span>&amp;</span> Moura</div>
         <div class="hdr-sub">EMISSÁRIO LEÃO DOURADO</div>
@@ -584,7 +554,7 @@ function renderDash(){
   html+=`<div class="kpi-grid">
     <div class="kpi"><div class="kpi-lb">Realizado</div><div class="kpi-v ${st}">${fmtPct(ov.pA)}</div><div class="kpi-u">do total geral</div></div>
     <div class="kpi"><div class="kpi-lb">IDP Global</div><div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div><div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div></div>
-    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">🔩 Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">metros de tubo</div></div>
+    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">metros de tubo</div></div>
     <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v">${ov.wdLeft}</div><div class="kpi-u">dias úteis até 30/04</div></div>
     <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
   </div>`;
