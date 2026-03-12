@@ -1,0 +1,15 @@
+# Dependências
+node_modules/
+
+# Ambiente — contém credenciais! Nunca subir para o repositório.
+.env
+
+# Arquivos temporários de debug
+plan_dump.json
+debug_excel.js
+read_excel.py
+excel_schema.json
+
+# Logs
+*.log
+npm-debug.log*

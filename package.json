@@ -1,0 +1,17 @@
+{
+  "name": "controle-emissario",
+  "version": "1.0.0",
+  "description": "Dashboard para Controle de Obra - Emissário",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.18.2",
+    "multer": "^2.1.1",
+    "xlsx": "^0.18.5"
+  }
+}

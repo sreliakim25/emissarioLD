@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Emissário — Controle de Obra | Viana &amp; Moura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --vmc-red:#8B1A1A;--vmc-red-l:#a82020;
+  --vmc-ink:#1E2740;--vmc-ink-l:#2d3a58;--vmc-ink-d:#141c30;
+  --vmc-gold:#E8A020;--vmc-gold-l:#f0b840;
+  --vmc-bg:#EDEAE3;--vmc-bg2:#F8F7F4;
+  --vmc-card:#FFFFFF;--vmc-border:#DDD9D0;
+  --vmc-dark:#1E2740;--vmc-gray:#6b7280;--vmc-gray-l:#9ca3af;
+  --green:#15803d;--orange:#c2410c;--red-a:#b91c1c;
+  --sh:0 1px 4px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.05);
+  --sh-lg:0 4px 20px rgba(0,0,0,.11);
+  --r:14px;--rs:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:15px}
+body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(--vmc-dark);min-height:100vh;padding-bottom:76px}
+
+/* HEADER */
+.hdr{background:var(--vmc-ink);color:#fff;padding:14px 18px 10px;position:sticky;top:0;z-index:100;box-shadow:var(--sh-lg)}
+.hdr-row{display:flex;justify-content:space-between;align-items:center}
+.hdr-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:6px}
+.hdr-logo span{color:var(--vmc-gold)}
+.hdr-sub{font-size:.63rem;opacity:.6;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px}
+.hdr-right{text-align:right}
+.hdr-date{font-size:.72rem;opacity:.65}
+.hdr-week{font-family:'Playfair Display',serif;font-size:.82rem;color:var(--vmc-gold);margin-top:2px}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--vmc-ink);display:flex;z-index:100;box-shadow:0 -2px 14px rgba(0,0,0,.18)}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 4px 6px;cursor:pointer;border:none;background:none;color:rgba(255,255,255,.38);font-family:'Crimson Pro',serif;font-size:.6rem;transition:all .2s;text-align:center}
+.bn.act{color:var(--vmc-gold)}
+.bn.act .bn-icon{filter:none}
+.bn-icon{font-size:1.25rem;margin-bottom:2px}
+
+/* SCREENS */
+.scr{display:none;padding:14px;max-width:900px;margin:0 auto}
+.scr.act{display:block}
+
+/* CARDS & SECTION */
+.card{background:var(--vmc-card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);margin-bottom:10px}
+.sec-title{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--vmc-ink);margin-bottom:10px;display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:2px solid var(--vmc-bg)}
+
+/* OVERALL PROGRESS — card branco com acento */
+.ov-card{background:var(--vmc-card);border-radius:var(--r);padding:20px;margin-bottom:10px;box-shadow:var(--sh-lg);border-top:4px solid var(--vmc-ink);position:relative;overflow:hidden}
+.ov-card::before{content:'';position:absolute;top:0;right:0;width:90px;height:90px;background:var(--vmc-gold);opacity:.07;border-radius:0 0 0 90px}
+.ov-label{font-size:.65rem;opacity:.6;text-transform:uppercase;letter-spacing:.9px;color:var(--vmc-dark)}
+.ov-pct{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:700;line-height:1;margin:4px 0 2px;color:var(--vmc-ink)}
+.ov-detail{font-size:.78rem;color:var(--vmc-gray);margin-bottom:10px}
+.pw{background:var(--vmc-bg);border-radius:100px;height:9px;overflow:hidden;margin:8px 0}
+.pb{height:100%;border-radius:100px;transition:width .7s ease}
+.pb.w{background:var(--vmc-ink)}
+.pb.g{background:var(--green)}
+.pb.o{background:var(--orange)}
+.pb.rv{background:var(--vmc-red)}
+.pb.pl{background:#94a3b8}
+
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:100px;font-size:.72rem;font-weight:600;margin-top:4px}
+.chip.ok{background:#dcfce7;color:#15803d}
+.chip.warn{background:#fef9c3;color:#854d0e}
+.chip.bad{background:#fee2e2;color:#991b1b}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:10px}
+.kpi{background:var(--vmc-card);border-radius:var(--rs);padding:14px 13px;text-align:center;box-shadow:var(--sh);border-bottom:3px solid var(--vmc-bg)}
+.kpi-lb{font-size:.62rem;text-transform:uppercase;letter-spacing:.8px;color:var(--vmc-gray-l);margin-bottom:6px}
+.kpi-v{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;line-height:1;color:var(--vmc-ink)}
+.kpi-u{font-size:.67rem;color:var(--vmc-gray);margin-top:4px}
+.kpi-v.g{color:var(--green)}.kpi-v.o{color:var(--orange)}.kpi-v.r{color:var(--vmc-red)}
+
+/* ALERTS */
+.alert{border-radius:var(--rs);padding:12px 14px;margin-bottom:9px;display:flex;align-items:flex-start;gap:9px;border:1px solid transparent}
+.alert.dan{background:#fff5f5;border-color:#fecaca;color:#7f1d1d}
+.alert.wrn{background:#fffbeb;border-color:#fde68a;color:#78350f}
+.alert.suc{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.alert-ico{font-size:1.15rem;flex-shrink:0;margin-top:1px}
+.alert-t{font-weight:600;font-size:.88rem;margin-bottom:3px}
+.alert-b{font-size:.8rem;line-height:1.5}
+
+/* TRECHO CARDS */
+.tc{background:var(--vmc-card);border-radius:var(--r);padding:15px;margin-bottom:9px;box-shadow:var(--sh);border-left:3px solid var(--vmc-ink)}
+.tc-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.tc-name{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--vmc-ink)}
+.tc-meta{font-size:.7rem;color:var(--vmc-gray);margin-top:3px;display:flex;gap:10px}
+.idp-badge{padding:4px 11px;border-radius:100px;font-size:.73rem;font-weight:700;font-family:'Playfair Display',serif}
+.idp-badge.g{background:#dcfce7;color:#15803d}
+.idp-badge.o{background:#fef3c7;color:#92400e}
+.idp-badge.r{background:#fee2e2;color:#991b1b}
+.pw2{background:var(--vmc-bg);border-radius:100px;height:7px;overflow:hidden;margin:4px 0}
+
+/* LANÇAR */
+.date-sel{display:flex;align-items:center;gap:10px;background:var(--vmc-card);border-radius:var(--rs);padding:12px 15px;margin-bottom:11px;box-shadow:var(--sh);border:1px solid var(--vmc-border)}
+.di{border:none;background:none;font-family:'Crimson Pro',serif;font-size:.95rem;flex:1;outline:none;color:var(--vmc-dark)}
+.t-tabs{display:flex;gap:7px;margin-bottom:11px}
+.t-tab{flex:1;padding:9px 8px;border-radius:var(--rs);border:1.5px solid var(--vmc-border);background:var(--vmc-card);font-family:'Crimson Pro',serif;font-size:.82rem;cursor:pointer;text-align:center;transition:all .2s;color:var(--vmc-gray)}
+.t-tab.act{background:var(--vmc-ink);color:#fff;border-color:var(--vmc-ink)}
+.act-item{background:var(--vmc-card);border-radius:var(--rs);padding:14px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid var(--vmc-border)}
+.act-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.act-name{font-size:.88rem;font-weight:500;flex:1;padding-right:10px;line-height:1.35;color:var(--vmc-dark)}
+.plan-td{font-size:.72rem;color:var(--vmc-gray);text-align:right;line-height:1.5}
+.plan-td strong{color:var(--vmc-red);font-family:'Playfair Display',serif;font-size:.92rem}
+.inp-row{display:flex;align-items:center;gap:9px}
+.qi{flex:1;padding:10px 13px;border:1.5px solid var(--vmc-border);border-radius:var(--rs);font-family:'Playfair Display',serif;font-size:1.1rem;text-align:center;outline:none;transition:border-color .2s;background:var(--vmc-bg2)}
+.qi:focus{border-color:var(--vmc-ink);background:#fff}
+.ul{font-size:.75rem;color:var(--vmc-gray);min-width:28px}
+.save-btn{width:100%;padding:15px;background:var(--vmc-ink);color:#fff;border:none;border-radius:var(--r);font-family:'Playfair Display',serif;font-size:1.05rem;cursor:pointer;margin-top:14px;transition:all .2s;box-shadow:0 4px 14px rgba(30,39,64,.25);display:flex;align-items:center;justify-content:center;gap:8px}
+.save-btn:active{transform:scale(.98);background:var(--vmc-ink-d)}
+
+/* GANTT */
+.gantt-wrap{background:var(--vmc-card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);overflow-x:auto;border:1px solid var(--vmc-border)}
+.gantt-inner{min-width:580px}
+.g-hdr-row{display:flex;margin-bottom:7px;font-size:.65rem;color:var(--vmc-gray)}
+.g-lbl-col{width:155px;flex-shrink:0;padding-right:7px;font-weight:600;font-size:.7rem;color:var(--vmc-ink)}
+.g-weeks{flex:1;display:flex}
+.g-wh{flex:1;text-align:center;font-size:.6rem;background:var(--vmc-bg);border-radius:3px;padding:2px;margin:0 1px;color:var(--vmc-gray)}
+.g-row{display:flex;align-items:center;margin-bottom:5px}
+.g-label{width:155px;flex-shrink:0;font-size:.7rem;color:var(--vmc-dark);padding-right:7px;line-height:1.3}
+.g-tb{font-size:.53rem;background:var(--vmc-ink);color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:1px;display:inline-block;opacity:.75}
+.g-track{flex:1;position:relative;height:22px}
+.g-bg{position:absolute;inset:0;background:var(--vmc-bg);border-radius:3px}
+.g-plan{position:absolute;top:4px;height:10px;background:#94a3b8;border-radius:3px;opacity:.5}
+.g-real{position:absolute;top:4px;height:10px;border-radius:3px}
+.g-today{position:absolute;top:0;bottom:0;width:2px;background:var(--vmc-gold);z-index:5}
+.g-pct{position:absolute;right:2px;top:1px;font-size:.58rem;color:var(--vmc-gray)}
+.g-section{padding:5px 0;border-top:1.5px solid var(--vmc-bg)}
+.g-section-lbl{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--vmc-ink);padding:3px 0;width:155px;font-weight:600}
+
+/* CRONOGRAMA */
+.wk-card{background:var(--vmc-card);border-radius:var(--r);overflow:hidden;margin-bottom:11px;box-shadow:var(--sh);border:1px solid var(--vmc-border)}
+.wk-bar{background:var(--vmc-ink);color:#fff;padding:10px 15px;display:flex;justify-content:space-between;align-items:center}
+.wk-lbl{font-family:'Playfair Display',serif;font-size:.88rem}
+.wk-meta{font-size:.68rem;opacity:.6;background:rgba(255,255,255,.1);padding:2px 8px;border-radius:100px}
+
+/* RESUMO */
+.resumo-box{background:var(--vmc-card);border-radius:var(--r);padding:18px;font-size:.85rem;line-height:1.75;box-shadow:var(--sh);white-space:pre-wrap;font-family:'Crimson Pro',serif;border:1px solid var(--vmc-border)}
+.copy-btn{width:100%;padding:14px;background:var(--vmc-gold);color:var(--vmc-dark);border:none;border-radius:var(--r);font-family:'Playfair Display',serif;font-size:1rem;cursor:pointer;margin-top:11px;font-weight:700;box-shadow:0 4px 12px rgba(232,160,32,.3)}
+.copy-btn:active{transform:scale(.98)}
+
+/* TOAST */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--vmc-ink);color:#fff;padding:11px 22px;border-radius:100px;font-size:.82rem;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DEMO BADGE */
+.demo-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:var(--vmc-card);color:var(--vmc-ink);border-radius:100px;font-size:.75rem;font-weight:700;cursor:pointer;border:1.5px solid var(--vmc-border);font-family:'Playfair Display',serif;margin-bottom:12px;box-shadow:var(--sh);transition:all .2s}
+.demo-btn:hover{border-color:var(--vmc-gold);color:var(--vmc-red)}
+
+/* STATUS COLORS */
+.txt-g{color:var(--green)}.txt-o{color:var(--orange)}.txt-r{color:var(--vmc-red)}
+@media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div>
+      <div class="hdr-logo"><span>⚙</span> Viana &amp; Moura</div>
+      <div class="hdr-sub">Emissário · Controle de Obra</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-date" id="hdrDate"></div>
+      <div class="hdr-week" id="hdrWeek"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="scr act" id="scr-dashboard">
+  <button class="demo-btn" onclick="loadDemo()">🎯 Sincronizar Base com Excel</button>
+  <div id="dashContent"></div>
+</div>
+
+<!-- LANÇAR -->
+<div class="scr" id="scr-lancar">
+  <div class="date-sel">
+    <span>📅</span>
+    <input type="date" id="inputDate" class="di">
+    <span style="font-size:.78rem;color:var(--vmc-gray)" id="inputDayName"></span>
+  </div>
+  <div class="t-tabs">
+    <button class="t-tab act" onclick="selTrecho(1)">Interd. 1</button>
+    <button class="t-tab" onclick="selTrecho(2)">Interd. 2</button>
+    <button class="t-tab" onclick="selTrecho(3)">Interd. 3</button>
+  </div>
+  <div id="actForm"></div>
+  <button class="save-btn" onclick="saveProd()">💾 Salvar Produção do Dia</button>
+</div>
+
+<!-- GANTT -->
+<div class="scr" id="scr-gantt">
+  <div class="sec-title">📊 Cronograma Gantt — Emissário</div>
+  <div id="ganttContent"></div>
+</div>
+
+<!-- CRONOGRAMA -->
+<div class="scr" id="scr-cronograma">
+  <div class="sec-title">📅 Cronograma Semanal Detalhado</div>
+  <div id="cronContent"></div>
+</div>
+
+<!-- RESUMO -->
+<div class="scr" id="scr-resumo">
+  <div class="sec-title">📋 Resumo para Diretoria</div>
+  <div id="resumoContent"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <button class="bn act" onclick="go('dashboard')"><span class="bn-icon">📊</span>Painel</button>
+  <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
+  <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
+  <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
+  <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONSTANTES E DATAS
+// ═══════════════════════════════════════════════════
+const DEADLINE = new Date('2026-04-30T00:00:00');
+const PROJ_START = new Date('2026-03-02T00:00:00');
+const GANTT_START = new Date('2026-03-02T00:00:00');
+const GANTT_END   = new Date('2026-04-30T00:00:00');
+
+const HOLIDAYS = new Set([
+  '2026-03-06','2026-04-02','2026-04-03',
+  '2026-04-13','2026-04-14','2026-04-20',
+  '2026-04-21','2026-04-25','2026-05-01'
+]);
+
+const DAY_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTH_PT= ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function fd(d){ // format date → YYYY-MM-DD
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function ptDate(d){ if(!d) return '—'; return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
+function isWD(d){
+  if(typeof d==='string') d=new Date(d+'T00:00:00');
+  const day=d.getDay();
+  if(day===0||day===6) return false;
+  return !HOLIDAYS.has(fd(d));
+}
+function countWD(s,e){
+  let c=0,d=new Date(s);
+  d.setHours(0,0,0,0);
+  const end=new Date(e); end.setHours(0,0,0,0);
+  while(d<=end){if(isWD(d))c++;d.setDate(d.getDate()+1);}
+  return c;
+}
+function addWD(d,n){
+  let r=new Date(d),rem=n;
+  while(rem>0){r.setDate(r.getDate()+1);if(isWD(r))rem--;}
+  return r;
+}
+function getWeekMon(d){
+  const day=d.getDay(),diff=day===0?-6:1-day;
+  const m=new Date(d); m.setDate(d.getDate()+diff); m.setHours(0,0,0,0);
+  return m;
+}
+function getWeekNum(d){
+  const m=getWeekMon(d);
+  const diff=Math.round((m-PROJ_START)/(7*86400000));
+  return Math.max(1,Math.floor(diff)+1);
+}
+function fmtNum(n,dec=1){ if(n===null||n===undefined) return '—'; return n.toFixed(dec).replace('.',','); }
+function fmtPct(n){ return (n*100).toFixed(1).replace('.',',')+'%'; }
+
+// ═══════════════════════════════════════════════════
+// DADOS DO PROJETO
+// ═══════════════════════════════════════════════════
+let TRECHOS = [];
+
+// ═══════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════
+let actuals = {}; // { 'YYYY-MM-DD': { actId: value } }
+let selT = 1;
+const today = new Date(); today.setHours(0,0,0,0);
+
+async function loadState(){
+  try {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+    if(data.success && data.actuals) {
+      actuals = data.actuals;
+    }
+    if (data.success && data.trechos) {
+      TRECHOS = data.trechos;
+      
+      // Atualizar abas se novos trechos existirem
+      const tTabs = document.querySelector('.t-tabs');
+      if(tTabs && TRECHOS.length > 0) {
+         let html = '';
+         TRECHOS.forEach((t, i) => {
+           html += `<button class="t-tab ${t.id === selT ? 'act' : ''}" onclick="selTrecho(${t.id})">${t.nome}</button>`;
+         });
+         tTabs.innerHTML = html;
+      }
+    }
+  } catch(e) {
+    console.error("Erro ao carregar do BD", e);
+  }
+}
+
+async function saveState(trechoId, dateStr, atividades){
+  try {
+    const res = await fetch('/api/lancamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trecho_id: trechoId,
+        data_lancamento: dateStr,
+        atividades: atividades
+      })
+    });
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error);
+  } catch(e) {
+    console.error("Erro ao salvar no BD", e);
+    throw e;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CÁLCULOS
+// ═══════════════════════════════════════════════════
+function plannedToDate(at, upTo){
+  // Soma valores do plano dia a dia até 'upTo'
+  if(!at.plano) return 0;
+  const upToStr = fd(new Date(upTo));
+  return Object.entries(at.plano).reduce((sum, [date, val]) => {
+    return date <= upToStr ? sum + val : sum;
+  }, 0);
+}
+function plannedForDay(at, dateStr){
+  // Retorna o valor exato planejado para aquele dia (vem do Supabase/Excel)
+  if(!at.plano) return 0;
+  return at.plano[dateStr] || 0;
+}
+function plannedForWeek(at, wMon, wFri){
+  let tot=0; const d=new Date(wMon);
+  while(d<=wFri){tot+=plannedForDay(at,fd(d));d.setDate(d.getDate()+1);}
+  return tot;
+}
+function actualTotal(id){
+  return Object.values(actuals).reduce((s,day)=>s+(Number(day[id])||0),0);
+}
+function actualForDay(id, dateStr){
+  return actuals[dateStr]?Number(actuals[dateStr][id])||0:0;
+}
+function actualForWeek(id, wMon, wFri){
+  let tot=0; const d=new Date(wMon);
+  while(d<=wFri){tot+=actualForDay(id,fd(d));d.setDate(d.getDate()+1);}
+  return tot;
+}
+
+function idpColor(v){ return v>=0.95?'g':v>=0.80?'o':'r'; }
+function idpLabel(v){ return v>=0.95?'✓ No Prazo':v>=0.80?'⚠ Atenção':'🚨 Atrasado'; }
+
+function trechoKPIs(t){
+  let tp=0, ta=0, tpd=0;
+  t.atividades.forEach(at=>{
+    tp+=at.total; ta+=actualTotal(at.id); tpd+=plannedToDate(at,today);
+  });
+  const pA=tp>0?ta/tp:0, pP=tp>0?tpd/tp:0;
+  const idp=pP>0.001?pA/pP:(pA>0?1.5:1.0);
+  const elapsed=countWD(new Date(t.inicio+'T00:00:00'),today);
+  const avgD=elapsed>0?ta/elapsed:null;
+  const rem=tp-ta;
+  let projEnd=null;
+  if(avgD&&avgD>0&&rem>0) projEnd=addWD(today,Math.ceil(rem/avgD));
+  else if(rem<=0) projEnd=new Date(today);
+  const wdLeft=countWD(today,DEADLINE);
+  const reqD=wdLeft>0&&rem>0?rem/wdLeft:null;
+  return {tp,ta,tpd,pA,pP,idp,projEnd,reqD,avgD,rem,wdLeft};
+}
+
+function overallKPIs(){
+  let tp=0,ta=0,tpd=0;
+  TRECHOS.forEach(t=>{const k=trechoKPIs(t);tp+=k.tp;ta+=k.ta;tpd+=k.tpd;});
+  const pA=tp>0?ta/tp:0, pP=tp>0?tpd/tp:0;
+  const idp=pP>0.001?pA/pP:1.0;
+  const wdLeft=countWD(today,DEADLINE);
+  return {tp,ta,tpd,pA,pP,idp,wdLeft};
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER: DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDash(){
+  const ov=overallKPIs();
+  const st=idpColor(ov.idp);
+
+  // Overall card
+  const anyDelay=TRECHOS.some(t=>{const k=trechoKPIs(t);return k.projEnd&&k.projEnd>DEADLINE;});
+  const chipCls=anyDelay?'bad':ov.idp<0.95?'warn':'ok';
+  const chipTxt=anyDelay?'⚠ Prazo em risco!':ov.idp<0.95?'⚠ Monitorar ritmo':'✓ Prazo: 30/04';
+
+  let html=`<div class="ov-card">
+    <div class="ov-label">Progresso Geral — Emissário</div>
+    <div class="ov-pct">${fmtPct(ov.pA)}</div>
+    <div class="pw"><div class="pb w" style="width:${Math.min(ov.pA*100,100)}%"></div></div>
+    <div class="ov-detail">Previsto hoje: ${fmtPct(ov.pP)} &nbsp;·&nbsp; IDP: <strong style="color:var(--vmc-ink)">${fmtNum(ov.idp,2)}</strong> &nbsp;·&nbsp; <strong style="color:var(--vmc-ink)">${ov.wdLeft}</strong> dias úteis até 30/04</div>
+    <span class="chip ${chipCls}">${chipTxt}</span>
+  </div>`;
+
+  // Alerts
+  TRECHOS.forEach(t=>{
+    const k=trechoKPIs(t);
+    if(k.idp<0.80&&k.projEnd&&k.projEnd>DEADLINE){
+      const delay=Math.ceil((k.projEnd-DEADLINE)/86400000);
+      html+=`<div class="alert dan">
+        <span class="alert-ico">🚨</span>
+        <div><div class="alert-t">${t.nome} — Prazo em Risco</div>
+        <div class="alert-b">Projeção de conclusão: <strong>${ptDate(k.projEnd)}</strong> (${delay} dia${delay>1?'s':''} após 30/04).<br>
+        Prod. diária necessária: <strong>${fmtNum(k.reqD,1)} un/dia</strong> em <strong>${k.wdLeft} jornadas</strong>.<br>
+        📌 Ampliar frente de trabalho ou aumentar produtividade diária.</div></div>
+      </div>`;
+    } else if(k.idp<0.95&&k.idp>=0.80){
+      html+=`<div class="alert wrn">
+        <span class="alert-ico">⚠️</span>
+        <div><div class="alert-t">${t.nome} — Atenção ao Ritmo</div>
+        <div class="alert-b">IDP: ${fmtNum(k.idp,2)} — Levemente abaixo do planejado. Meta: <strong>${fmtNum(k.reqD,1)} un/dia</strong> para cumprir o prazo.</div></div>
+      </div>`;
+    }
+  });
+  if(!TRECHOS.some(t=>{const k=trechoKPIs(t);return k.idp<0.95;})){
+    html+=`<div class="alert suc"><span class="alert-ico">✅</span><div><div class="alert-t">Execução no prazo</div><div class="alert-b">Todas as interdições estão com desempenho adequado para entrega até 30/04/2026.</div></div></div>`;
+  }
+
+  // KPIs
+  html+=`<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lb">Realizado</div><div class="kpi-v ${st}">${fmtPct(ov.pA)}</div><div class="kpi-u">do total geral</div></div>
+    <div class="kpi"><div class="kpi-lb">IDP Global</div><div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div><div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div></div>
+    <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v">${ov.wdLeft}</div><div class="kpi-u">dias úteis até 30/04</div></div>
+    <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
+  </div>`;
+
+  // Trecho cards
+  html+=`<div class="sec-title" style="margin-top:4px">📍 Interdições</div>`;
+  TRECHOS.forEach(t=>{
+    const k=trechoKPIs(t);
+    const st=idpColor(k.idp);
+    const delayed=k.projEnd&&k.projEnd>DEADLINE;
+    let projH='';
+    if(k.projEnd){
+      const dly=Math.max(0,Math.ceil((k.projEnd-DEADLINE)/86400000));
+      projH=`<div style="font-size:.75rem;color:${delayed?'#dc2626':'#16a34a'};margin-top:6px">
+        ${delayed?'🚨':'✅'} Projeção: <strong>${ptDate(k.projEnd)}</strong>
+        ${delayed?` (${dly}d atraso · necessário ${fmtNum(k.reqD,1)} un/dia)`:'— No prazo'}</div>`;
+    }
+    html+=`<div class="tc" style="border-left-color:${k.idp>=0.95?'#15803d':k.idp>=0.80?'#c2410c':'var(--vmc-red)'}">
+      <div class="tc-hdr">
+        <div><div class="tc-name">${t.nome}</div>
+          <div class="tc-meta"><span>📅 ${ptDate(new Date(t.inicio+'T00:00:00'))}</span><span>🏁 ${ptDate(new Date(t.fim+'T00:00:00'))}</span></div>
+        </div>
+        <span class="idp-badge ${st}">IDP ${fmtNum(k.idp,2)}</span>
+      </div>
+      <div style="font-size:.75rem;color:var(--vmc-gray);margin-bottom:5px">
+        Realizado: <strong style="color:var(--vmc-dark)">${fmtPct(k.pA)}</strong> &nbsp;·&nbsp; Previsto: <strong>${fmtPct(k.pP)}</strong>
+      </div>
+      <div class="pw2" title="Previsto"><div class="pb pl" style="width:${Math.min(k.pP*100,100)}%"></div></div>
+      <div class="pw2" title="Realizado"><div class="pb ${st}" style="width:${Math.min(k.pA*100,100)}%"></div></div>
+      <div style="display:flex;gap:12px;font-size:.68rem;color:var(--vmc-gray);margin-top:3px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:11px;height:7px;background:#94a3b8;border-radius:2px;display:inline-block;opacity:.5"></span>Previsto</span>
+        <span style="display:flex;align-items:center;gap:3px"><span style="width:11px;height:7px;background:${st==='g'?'#15803d':st==='o'?'#c2410c':'#8B1A1A'};border-radius:2px;display:inline-block"></span>Realizado</span>
+      </div>
+      ${projH}
+    </div>`;
+  });
+
+  document.getElementById('dashContent').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER: LANÇAR
+// ═══════════════════════════════════════════════════
+function renderLancar(){
+  const dateStr=document.getElementById('inputDate').value;
+  if(!dateStr) return;
+  const d=new Date(dateStr+'T00:00:00');
+  document.getElementById('inputDayName').textContent=DAY_PT[d.getDay()];
+  const t=TRECHOS.find(t=>t.id===selT);
+  const saved=actuals[dateStr]||{};
+  let html='';
+  
+  if (!t || !t.atividades || t.atividades.length === 0) {
+    document.getElementById('actForm').innerHTML = `<div class="alert wrn"><span class="alert-ico">⚠️</span><div><div class="alert-t">Sem atividades</div><div class="alert-b">Não há plano para este trecho no banco de dados. Sincronize com o Excel.</div></div></div>`;
+    return;
+  }
+
+  if(!isWD(d)){
+    html+=`<div class="alert wrn"><span class="alert-ico">📅</span><div><div class="alert-t">Dia não útil (fim de semana ou feriado)</div><div class="alert-b">Você pode lançar mesmo assim caso haja trabalho extraordinário.</div></div></div>`;
+  }
+  t.atividades.forEach(at=>{
+    const pt=plannedForDay(at,dateStr);
+    const sv=saved[at.id]||'';
+    const cum=actualTotal(at.id);
+    const pctD=at.total>0?cum/at.total:0;
+    const ptdPct=at.total>0?plannedToDate(at,today)/at.total:0;
+    const idpAct=ptdPct>0.001?pctD/ptdPct:1;
+    const sc=idpColor(idpAct);
+    html+=`<div class="act-item">
+      <div class="act-hdr">
+        <div class="act-name">${at.nome}</div>
+        <div class="plan-td">Meta hoje:<br><strong>${fmtNum(pt,1)}</strong> ${at.un}<br>
+          <span style="font-size:.68rem;color:var(--vmc-gray)">${fmtPct(pctD)} concluído</span>
+        </div>
+      </div>
+      <div class="inp-row">
+        <input type="number" class="qi" id="inp_${at.id}" value="${sv}" min="0" step="0.1" placeholder="0">
+        <span class="ul">${at.un}</span>
+      </div>
+      <div class="pw2" style="margin-top:7px"><div class="pb ${sc}" style="width:${Math.min(pctD*100,100)}%"></div></div>
+    </div>`;
+  });
+  document.getElementById('actForm').innerHTML=html;
+}
+
+function selTrecho(id){
+  selT=id;
+  document.querySelectorAll('.t-tab').forEach((b,i)=>b.classList.toggle('act',i===id-1));
+  renderLancar();
+}
+
+async function saveProd(){
+  const dateStr=document.getElementById('inputDate').value;
+  if(!dateStr){showToast('Selecione uma data');return;}
+  
+  const bBtn = document.querySelector('.save-btn');
+  bBtn.textContent = '⏳ Salvando...';
+  bBtn.disabled = true;
+
+  if(!actuals[dateStr]) actuals[dateStr]={};
+  const t=TRECHOS.find(t=>t.id===selT);
+  let ok=false;
+  let atividadesParaSalvar = {};
+  
+  t.atividades.forEach(at=>{
+    const inp=document.getElementById('inp_'+at.id);
+    if(inp){
+      const v=parseFloat(inp.value);
+      if(!isNaN(v)&&v>0){
+        actuals[dateStr][at.id]=v;
+        atividadesParaSalvar[at.id] = v;
+        ok=true;
+      }
+    }
+  });
+
+  if(ok){
+    try {
+      await saveState(t.id, dateStr, atividadesParaSalvar);
+      showToast('✓ Produção salva no Banco de Dados!');
+      renderDash();
+      renderLancar();
+    } catch(err) {
+      showToast('❌ Erro ao salvar: ' + err.message);
+    }
+  } else {
+    showToast('Nenhum valor informado');
+  }
+  
+  bBtn.textContent = '💾 Salvar Produção do Dia';
+  bBtn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER: GANTT
+// ═══════════════════════════════════════════════════
+function renderGantt(){
+  const span=(GANTT_END-GANTT_START)/86400000;
+  function p(ds){ return Math.max(0,Math.min(100,((new Date(ds+'T00:00:00')-GANTT_START)/((GANTT_END-GANTT_START)))*100)); }
+  const todayP=p(fd(today));
+
+  // Week headers
+  let weeks='';
+  for(let i=0;i<9;i++){
+    const ws=new Date(GANTT_START); ws.setDate(GANTT_START.getDate()+i*7);
+    weeks+=`<div class="g-wh">S${i+1}<br>${String(ws.getDate()).padStart(2,'0')}/${String(ws.getMonth()+1).padStart(2,'0')}</div>`;
+  }
+
+  let html=`<div class="gantt-wrap"><div class="gantt-inner">
+    <div class="g-hdr-row">
+      <div class="g-lbl-col" style="font-family:'Playfair Display',serif">Atividade</div>
+      <div class="g-weeks">${weeks}</div>
+    </div>
+    <div class="g-today-label" style="margin-bottom:4px;font-size:.68rem;color:var(--vmc-gold)">▼ Linha dourada = Hoje (${ptDate(today)})</div>`;
+
+  TRECHOS.forEach(t=>{
+    html+=`<div class="g-section"><div style="display:flex;align-items:center">
+      <div class="g-section-lbl">${t.nome}</div>
+      <div style="flex:1;position:relative;height:4px;background:${t.cor}20;border-radius:2px">
+        <div class="g-today" style="left:${todayP}%"></div>
+      </div>
+    </div></div>`;
+    t.atividades.forEach(at=>{
+      const sp=p(at.ini), ep=p(at.fim);
+      const wp=Math.max(ep-sp,1);
+      const cum=actualTotal(at.id);
+      const pctD=at.total>0?cum/at.total:0;
+      const ptdPct=at.total>0?plannedToDate(at,today)/at.total:0;
+      const idpV=ptdPct>0.001?pctD/ptdPct:1;
+      const bc=idpColor(idpV)==='g'?'#16a34a':idpColor(idpV)==='o'?'#ea580c':'#8B1A1A';
+      const aw=wp*Math.min(pctD,1);
+      html+=`<div class="g-row">
+        <div class="g-label"><div class="g-tb">T${t.id}</div>${at.nome}</div>
+        <div class="g-track">
+          <div class="g-bg"></div>
+          <div class="g-plan" style="left:${sp}%;width:${wp}%"></div>
+          <div class="g-real" style="left:${sp}%;width:${aw}%;background:${bc}"></div>
+          <div class="g-today" style="left:${todayP}%"></div>
+          <div class="g-pct">${(pctD*100).toFixed(0)}%</div>
+        </div>
+      </div>`;
+    });
+  });
+
+  html+=`</div>
+    <div style="margin-top:12px;display:flex;gap:16px;font-size:.72rem;color:var(--vmc-gray);flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:8px;background:#94a3b8;border-radius:2px;display:inline-block;opacity:.5"></span>Planejado</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:8px;background:var(--vmc-ink);border-radius:2px;display:inline-block"></span>Realizado</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:2px;height:14px;background:var(--vmc-gold);display:inline-block"></span>Hoje</span>
+      <span style="color:var(--vmc-gray-l)">Verde: no prazo · Laranja: atenção · Vermelho: atrasado</span>
+    </div>
+  </div>`;
+
+  document.getElementById('ganttContent').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER: CRONOGRAMA
+// ═══════════════════════════════════════════════════
+function renderCron(){
+  const wkMon=getWeekMon(today);
+  let html='';
+  for(let w=0;w<4;w++){
+    const mon=new Date(wkMon); mon.setDate(wkMon.getDate()+w*7);
+    const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+    const wn=getWeekNum(mon);
+    const isPast=fri<today;
+
+    // Meta semanal
+    let metaLines='';
+    TRECHOS.forEach(t=>t.atividades.forEach(at=>{
+      const pw=plannedForWeek(at,mon,fri);
+      const aw=actualForWeek(at.id,mon,fri);
+      if(pw>0.05){
+        const pctW=pw>0?aw/pw:0;
+        const color=pctW>=0.9?'#166534':pctW>=0.7?'#9a3412':'#991b1b';
+        metaLines+=`<div style="font-size:.72rem;padding:2px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between">
+          <span style="color:var(--vmc-gray)">T${t.id} · ${at.nome}</span>
+          <span style="color:${isPast?color:'var(--vmc-red)'};font-weight:600">${fmtNum(pw,1)} ${at.un}${isPast?` (${fmtNum(aw,1)})`:''}</span>
+        </div>`;
+      }
+    }));
+
+    // Dias
+    let daysH='';
+    for(let dd=0;dd<5;dd++){
+      const day=new Date(mon); day.setDate(mon.getDate()+dd);
+      const ds=fd(day);
+      const isT=ds===fd(today);
+      const isH=!isWD(day)&&day.getDay()!==0&&day.getDay()!==6;
+      const isP=day<today;
+      let tasks='';
+      TRECHOS.forEach(t=>t.atividades.forEach(at=>{
+        const pd=plannedForDay(at,ds);
+        if(pd>0.05){
+          const ad=actualForDay(at.id,ds);
+          const done=ad>0;
+          const miss=isP&&!done&&!isH;
+          tasks+=`<span style="font-size:.65rem;padding:1px 5px;margin:1px 2px 1px 0;border-radius:3px;background:${done?'#dcfce7':miss?'#fee2e2':'#f1f5f9'};color:${done?'#166534':miss?'#991b1b':'#374151'};display:inline-block">
+            T${t.id} ${at.nome.substring(0,11)}… ${fmtNum(pd,0)} ${at.un}${done?' ✓':''}
+          </span>`;
+        }
+      }));
+      daysH+=`<div style="padding:8px 0;border-bottom:1px solid var(--vmc-cream);background:${isH?'#fff7ed':isT?'#fffbeb':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:.8rem;font-weight:${isT?600:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
+          ${isH?'<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO</span>':''}
+          ${isT?'<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>':''}
+        </div>
+        <div>${tasks||'<span style="font-size:.68rem;color:#9ca3af">Sem atividades previstas</span>'}</div>
+      </div>`;
+    }
+
+    html+=`<div class="wk-card">
+      <div class="wk-bar">
+        <span class="wk-lbl">Semana ${wn} — ${ptDate(mon)} a ${ptDate(fri)}</span>
+        <span class="wk-meta">${isPast?'Concluída':'Próxima'}</span>
+      </div>
+      <div style="padding:10px 15px 4px;background:#fafaf8;border-bottom:1px solid var(--vmc-cream)">
+        <div style="font-size:.65rem;color:var(--vmc-gray);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Metas da Semana${isPast?' (Previsto · Realizado)':''}</div>
+        ${metaLines||'<div style="font-size:.72rem;color:#9ca3af">Sem atividades previstas</div>'}
+      </div>
+      <div style="padding:4px 15px 8px">${daysH}</div>
+    </div>`;
+  }
+  document.getElementById('cronContent').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER: RESUMO SEMANAL
+// ═══════════════════════════════════════════════════
+function renderResumo(){
+  const mon=getWeekMon(today);
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  const wn=getWeekNum(today);
+  const ov=overallKPIs();
+
+  const lines=[];
+  lines.push(`📊 *RELATÓRIO SEMANAL — EMISSÁRIO*`);
+  lines.push(`🗓 Semana ${wn}  |  ${ptDate(mon)} → ${ptDate(fri)}`);
+  lines.push(`🏗 Viana & Moura Construções | Sistema de Esgotamento Sanitário`);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`📈 *PROGRESSO GERAL*`);
+  lines.push(`▸ Realizado: *${fmtPct(ov.pA)}*  |  Previsto: ${fmtPct(ov.pP)}`);
+  lines.push(`▸ IDP Global: *${fmtNum(ov.idp,2)}*  (${ov.idp>=1?'Adiantado':ov.idp>=0.95?'No prazo':ov.idp>=0.80?'Atenção — ajustar ritmo':'🚨 ATRASADO — ação imediata'})`);
+  lines.push(`▸ Prazo limite: *30/04/2026* | Dias úteis restantes: *${ov.wdLeft}*`);
+  lines.push(``);
+
+  TRECHOS.forEach(t=>{
+    const k=trechoKPIs(t);
+    const ico=k.idp>=0.95?'✅':k.idp>=0.80?'⚠️':'🚨';
+    lines.push(`${ico} *${t.nome.toUpperCase()}*`);
+    lines.push(`   Avanço: *${fmtPct(k.pA)}*  |  Previsto: ${fmtPct(k.pP)}  |  IDP: ${fmtNum(k.idp,2)}`);
+    if(k.projEnd){
+      const delayed=k.projEnd>DEADLINE;
+      if(delayed){
+        const d=Math.ceil((k.projEnd-DEADLINE)/86400000);
+        lines.push(`   ⚠ Projeção: ${ptDate(k.projEnd)} (${d}d após prazo!)`);
+        lines.push(`   📌 *Meta diária necessária: ${fmtNum(k.reqD,1)} un/dia*`);
+        lines.push(`   📌 Recomendação: ampliar frente ou aumentar jornada`);
+      } else {
+        lines.push(`   ✓ Projeção: ${ptDate(k.projEnd)} — No prazo`);
+      }
+    }
+    lines.push(`   — Produção na semana:`);
+    t.atividades.forEach(at=>{
+      const pw=plannedForWeek(at,mon,fri);
+      const aw=actualForWeek(at.id,mon,fri);
+      if(pw>0.05||aw>0){
+        const icon=aw>=pw*0.9?'✓':aw>0?'△':'○';
+        lines.push(`     ${icon} ${at.nome}: ${fmtNum(aw,1)}/${fmtNum(pw,1)} ${at.un}`);
+      }
+    });
+    lines.push(``);
+  });
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
+  const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
+  const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+4);
+  lines.push(`📅 *PRÓXIMA SEMANA (S${wn+1}) — ${ptDate(nMon)} a ${ptDate(nFri)}*`);
+  TRECHOS.forEach(t=>{
+    t.atividades.forEach(at=>{
+      const np=plannedForWeek(at,nMon,nFri);
+      if(np>0.05) lines.push(`  • T${t.id} · ${at.nome}: ${fmtNum(np,1)} ${at.un}`);
+    });
+  });
+  lines.push(``);
+  lines.push(`_Gerado em ${ptDate(today)} · Viana & Moura Construções_`);
+
+  const plain=lines.join('\n');
+
+  // HTML render (styled)
+  const styled=plain
+    .replace(/\*(.*?)\*/g,'<strong>$1</strong>')
+    .replace(/_(.*?)_/g,'<em>$1</em>')
+    .replace(/━/g,'<span style="color:var(--vmc-red)">━</span>');
+
+  document.getElementById('resumoContent').innerHTML=`
+    <div style="font-size:.72rem;color:var(--vmc-gray);margin-bottom:8px">Prévia do relatório · Pressione copiar para enviar ao grupo</div>
+    <div class="resumo-box">${styled}</div>
+    <button class="copy-btn" onclick="copyResumo()">📋 Copiar para WhatsApp / Grupo da Diretoria</button>`;
+  document.getElementById('resumoContent').dataset.plain=plain;
+}
+
+function copyResumo(){
+  const txt=document.getElementById('resumoContent').dataset.plain;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(txt).then(()=>showToast('✓ Copiado! Cole no grupo da diretoria.')).catch(()=>fallbackCopy(txt));
+  } else { fallbackCopy(txt); }
+}
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea');
+  ta.value=txt; document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy');showToast('✓ Copiado!');}catch(e){showToast('Erro ao copiar');}
+  document.body.removeChild(ta);
+}
+
+// ═══════════════════════════════════════════════════
+// DEMO DATA
+// ═══════════════════════════════════════════════════
+async function loadDemo(){
+  const btn = document.querySelector('.demo-btn');
+  btn.textContent = '⏳ Sincronizando com Excel...';
+  
+  try {
+    const res = await fetch('/api/sync-excel', { method: 'POST' });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    showToast(`✓ ${data.registros_afetados} registros sincronizados do Excel!`);
+  } catch(e) {
+    showToast('❌ Erro: ' + e.message);
+  }
+  
+  btn.innerHTML = '🎯 Sincronizar Base com Excel';
+}
+
+// ═══════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════════════════
+function go(name){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
+  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
+  document.getElementById('scr-'+name).classList.add('act');
+  const idx=['dashboard','lancar','gantt','cronograma','resumo'].indexOf(name);
+  if(idx>=0) document.querySelectorAll('.bn')[idx].classList.add('act');
+  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,resumo:renderResumo};
+  if(renders[name]) renders[name]();
+  window.scrollTo(0,0);
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+async function init(){
+  await loadState();
+  const di=document.getElementById('inputDate');
+  di.value=fd(today);
+  di.addEventListener('change',renderLancar);
+  document.getElementById('hdrDate').textContent=`${DAY_PT[today.getDay()]}, ${ptDate(today)}`;
+  const mon=getWeekMon(today), fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  document.getElementById('hdrWeek').textContent=`Semana ${getWeekNum(today)} · ${ptDate(mon)}–${ptDate(fri)}`;
+  renderDash();
+  renderLancar();
+}
+
+init();
+</script>
+</body>
+</html>
