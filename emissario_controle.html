@@ -286,7 +286,8 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
     <div class="map-overlay-info" id="mapInfo">Clique em um trecho</div>
     <div class="map-legend">
       <div class="leg-item"><div class="leg-box" style="background:var(--vmc-red)"></div> Realizado</div>
-      <div class="leg-item"><div class="leg-box" style="background:#f1f5f9;border:1px solid #ddd"></div> Projetado</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f0b840"></div> Planejado</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f1f5f9;border:1px solid #ddd"></div> Rede Emissário</div>
     </div>
     <div class="map-hint">📍 Mapa real georeferenciado com visão de satélite.</div>
   </div>
@@ -1154,15 +1155,28 @@ function drawMapData(){
     }).addTo(map);
     mapLayers.push(bg);
 
-    // 2. Desenhar realizado (preenchimento proporcional)
+    // 2. Desenhar planejado (opcional: um pouco mais claro que o realizado)
+    const pP = Math.min(k.pP, 1);
+    if(pP > 0){
+      const planPoints = getPartialPath(points, pP);
+      const plan = L.polyline(planPoints, {
+        color: '#f0b840', // Cor Planejado (Dourado/Laranja claro)
+        weight: 12,
+        opacity: 0.6,
+        lineCap: 'round'
+      }).addTo(map);
+      mapLayers.push(plan);
+    }
+
+    // 3. Desenhar realizado (preenchimento proporcional)
     const pA = Math.min(k.pA, 1);
     if(pA > 0){
       // Calcula o sub-segmento das coordenadas baseado no progresso
       const subPoints = getPartialPath(points, pA);
       const real = L.polyline(subPoints, {
-        color: '#8B1A1A',
+        color: '#8B1A1A', // Cor Realizado (V&M Red)
         weight: 12,
-        opacity: 0.9,
+        opacity: 1,
         lineCap: 'round'
       }).addTo(map);
       
