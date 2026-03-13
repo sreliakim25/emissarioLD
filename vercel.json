@@ -8,16 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/logo.png",
-      "dest": "/logo.png"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "/sw.js",
-      "dest": "/sw.js"
+      "handle": "filesystem"
     },
     {
       "src": "/api/(.*)",
