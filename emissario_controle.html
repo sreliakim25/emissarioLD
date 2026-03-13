@@ -278,7 +278,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   <div id="resumoContent"></div>
 </div>
 
-<!-- MAPA -->
+<!-- GESTÃO VISUAL -->
 <div class="scr" id="scr-mapa">
   <div class="sec-title">📍 Gestão Visual — Traçado Linear</div>
   <div class="map-container">
@@ -311,7 +311,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
   <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
   <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
-  <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>Mapa</button>
+  <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>G. Visual</button>
   <button class="bn" onclick="go('diario')"><span class="bn-icon">📝</span>Diário</button>
   <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
 </nav>
@@ -1267,6 +1267,7 @@ async function loadDemo(){
 
 async function renderDiario(){
   const date = document.getElementById('inputDate').value;
+  document.getElementById('diarioDatePicker').value = date;
   const d = new Date(date+'T00:00:00');
   document.getElementById('diarioDateHdr').textContent = `Relato para o dia ${ptDate(d)}`;
   document.getElementById('diarioText').value = "Carregando...";
@@ -1295,12 +1296,20 @@ async function saveDiario(){
   } catch(e) { showToast("❌ Erro ao salvar"); }
 }
 
+function syncDiarioDate(val){
+  document.getElementById('inputDate').value = val;
+  renderDiario();
+}
+
 let DIARIOS = [];
 
 // ═══════════════════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════════════════
 function go(name){
+  if(name==='mapa' || name==='dashboard' || name==='lancar' || name==='gantt' || name==='cronograma' || name==='diario' || name==='resumo'){
+    // OK
+  }
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
   document.getElementById('scr-'+name).classList.add('act');
@@ -1338,6 +1347,10 @@ init();
 <div class="scr" id="scr-diario">
   <div class="sec-title">📝 Diário de Obra</div>
   <div class="ov-card" style="padding:20px">
+    <div style="margin-bottom:15px">
+      <label style="font-size:0.8rem;color:var(--vmc-gray);display:block;margin-bottom:5px">Selecione o Dia:</label>
+      <input type="date" id="diarioDatePicker" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit" onchange="syncDiarioDate(this.value)">
+    </div>
     <div style="font-size:0.9rem;font-weight:600;color:var(--vmc-ink);margin-bottom:10px" id="diarioDateHdr"></div>
     <textarea id="diarioText" style="width:100%;height:300px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:inherit;font-size:0.9rem;resize:none" placeholder="Digite aqui o relato das ocorrências do dia..."></textarea>
     <button class="btn-confirm" style="width:100%;margin-top:15px" onclick="saveDiario()">💾 Salvar Relato do Dia</button>
