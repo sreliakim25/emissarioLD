@@ -605,9 +605,9 @@ function renderDash(){
 
   const behindGlobal = ov.pP > 0.01 && ov.pA < ov.pP - 0.005;
   const gap = ov.pP - ov.pA;
-  const anyDelay = TRECHOS.some(t=>{const k=trechoKPIs(t);return k.projEnd&&k.projEnd>DEADLINE;});
+  const anyDelay = TRECHOS.some(t=>{const k=trechoKPIs(t);return k.projEnd&&k.projEnd>k.trechoDeadline;});
   const chipCls = anyDelay?'bad':behindGlobal?'warn':'ok';
-  const chipTxt = anyDelay?'⚠ Prazo em risco!':behindGlobal?'⚠ Em atraso':'✓ Prazo: 30/04';
+  const chipTxt = anyDelay?'⚠ Algum trecho em risco!':behindGlobal?'⚠ Em atraso':'✓ Prazo: 30/04';
 
   // Coletar info de atraso por trecho
   let delaySummary = '';
@@ -643,8 +643,8 @@ function renderDash(){
   // Alerts
   TRECHOS.forEach(t=>{
     const k=trechoKPIs(t);
-    if(k.idp<0.80&&k.projEnd&&k.projEnd>DEADLINE){
-      const delay=Math.ceil((k.projEnd-DEADLINE)/86400000);
+    if(k.idp<0.80&&k.projEnd&&k.projEnd>k.trechoDeadline){
+      const delay=Math.ceil((k.projEnd-k.trechoDeadline)/86400000);
       const ritmoAtual = k.avgD!=null ? `Ritmo atual: <strong>${fmtNum(k.avgD,1)} ${k.atuUn}/dia</strong> de Assentamento. ` : '';
       html+=`<div class="alert dan">
         <span class="alert-ico">🚨</span>
@@ -1104,7 +1104,7 @@ function renderResumo(){
   TRECHOS.forEach(t=>{
     const k=trechoKPIs(t);
     const isBehind = k.pP > 0.01 && k.pA < k.pP - 0.005;
-    const isAtRisk = k.projEnd && k.projEnd > DEADLINE;
+    const isAtRisk = k.projEnd && k.projEnd > k.trechoDeadline;
     
     let ico = '✅';
     let statusTxt = 'No prazo';
@@ -1122,11 +1122,11 @@ function renderResumo(){
     
     if(k.projEnd){
       if(isAtRisk){
-        const d=Math.ceil((k.projEnd-DEADLINE)/86400000);
-        lines.push(`   🚨 Projeção: ${ptDate(k.projEnd)} (${d}d após prazo final!)`);
+        const d=Math.ceil((k.projEnd-k.trechoDeadline)/86400000);
+        lines.push(`   🚨 Projeção: ${ptDate(k.projEnd)} (${d}d após prazo do trecho!)`);
         lines.push(`   📌 *Meta necessária: ${fmtNum(k.reqD,1)} ${k.atuUn}/dia*`);
       } else {
-        lines.push(`   ✓ Projeção: ${ptDate(k.projEnd)} — Dentro do prazo`);
+        lines.push(`   ✓ Projeção: ${ptDate(k.projEnd)} — No prazo do trecho`);
       }
     }
     lines.push(`   — Produção na semana:`);
