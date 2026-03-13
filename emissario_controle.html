@@ -214,6 +214,15 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .act-det{display:flex;justify-content:space-between;align-items:flex-end;font-size:0.75rem;margin-bottom:2px}
   .act-det-name{color:var(--vmc-ink);font-weight:700}
   .act-det-qty{color:var(--vmc-gray);font-size:0.7rem}
+
+  /* Diário Histórico Accordion */
+  .diario-hist { margin-top: 25px; border-top: 2px dashed var(--vmc-border); padding-top: 20px; }
+  .hist-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; overflow: hidden; box-shadow: var(--sh); }
+  .hist-hdr { padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 700; font-size: 0.88rem; color: var(--vmc-ink); background: var(--vmc-bg2); transition: background 0.2s; }
+  .hist-hdr:hover { background: #f1f5f9; }
+  .hist-body { padding: 18px; font-size: 0.92rem; color: var(--vmc-dark); display: none; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid #f1f5f9; background: #fff; }
+  .hist-item.open .hist-body { display: block; }
+  .hist-item.open .hist-hdr { background: #fff; border-bottom: 1px solid #f1f5f9; }
 </style>
 
 </head>
@@ -1359,8 +1368,51 @@ async function renderDiario(){
     const res = await fetch(`/api/diario?data=${date}`);
     const data = await res.json();
     document.getElementById('diarioText').value = data.texto || "";
+    renderHistoricoDiario(); // Atualiza a lista sempre que renderiza a tela
   } catch(e) {
     document.getElementById('diarioText').value = "";
+  }
+}
+
+function renderHistoricoDiario(){
+  const container = document.getElementById('diarioHistory');
+  if(!container) return;
+  
+  // Ordenar decrescente por data para mostrar os mais recentes primeiro
+  const logs = [...DIARIOS].sort((a,b) => b.data.localeCompare(a.data));
+  
+  if(logs.length === 0){
+    container.innerHTML = '<div style="text-align:center;color:var(--vmc-gray);font-size:0.82rem;padding:30px;background:var(--vmc-bg2);border-radius:12px;margin-top:10px">Nenhum relato anterior encontrado.</div>';
+    return;
+  }
+  
+  let html = '<div style="font-size:0.75rem;color:var(--vmc-gray);margin-bottom:12px;text-transform:uppercase;letter-spacing:1.2px;font-weight:800;display:flex;align-items:center;gap:8px">📜 Histórico de Relatos</div>';
+  logs.forEach((log, idx) => {
+    const d = new Date(log.data+'T00:00:00');
+    html += `
+      <div class="hist-item" id="hist-${idx}">
+        <div class="hist-hdr" onclick="toggleHist(${idx})">
+          <span>📅 ${ptDate(d)}</span>
+          <span id="icon-${idx}" style="font-size:0.7rem;opacity:0.5">▼ expandir</span>
+        </div>
+        <div class="hist-body">${log.texto}</div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function toggleHist(idx){
+  const el = document.getElementById(`hist-${idx}`);
+  const icon = document.getElementById(`icon-${idx}`);
+  const isOpen = el.classList.contains('open');
+  
+  if(isOpen){
+    el.classList.remove('open');
+    icon.innerHTML = '▼ expandir';
+  } else {
+    el.classList.add('open');
+    icon.innerHTML = '▲ recolher';
   }
 }
 
@@ -1387,6 +1439,7 @@ async function saveDiario(){
       const idx = DIARIOS.findIndex(d => d.data === date);
       if(idx >= 0) DIARIOS[idx].texto = texto;
       else DIARIOS.push({ data: date, texto });
+      renderHistoricoDiario();
     }
     else throw new Error(data.error);
   } catch(e) { 
@@ -1454,6 +1507,7 @@ init();
     <textarea id="diarioText" style="width:100%;height:300px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:inherit;font-size:0.9rem;resize:none" placeholder="Digite aqui o relato das ocorrências do dia..."></textarea>
     <button class="btn-confirm" style="width:100%;margin-top:15px" onclick="saveDiario()">💾 Salvar Relato do Dia</button>
   </div>
+  <div class="diario-hist" id="diarioHistory"></div>
 </div>
 
 <!-- Modal de Confirmação -->
