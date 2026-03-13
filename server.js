@@ -9,8 +9,9 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Servir o arquivo estático
-app.use(express.static(__dirname));
+// Servir arquivos estáticos da pasta public
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname)); // Fallback para a raiz se necessário
 
 // Endpoint para ler e processar a planilha
 app.post('/api/sync-excel', async (req, res) => {
