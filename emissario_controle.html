@@ -265,7 +265,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 
 <!-- RESUMO -->
 <div class="scr" id="scr-resumo">
-  <div class="sec-title">📋 Resumo para Diretoria</div>
+  <div class="sec-title">📋 Resumo</div>
   <div id="resumoContent"></div>
 </div>
 <!-- SUCCESS MODAL -->
@@ -1036,14 +1036,14 @@ function renderResumo(){
   document.getElementById('resumoContent').innerHTML=`
     <div style="font-size:.72rem;color:var(--vmc-gray);margin-bottom:8px">Prévia do relatório · Pressione copiar para enviar ao grupo</div>
     <div class="resumo-box">${styled}</div>
-    <button class="copy-btn" onclick="copyResumo()">📋 Copiar para WhatsApp / Grupo da Diretoria</button>`;
+    <button class="copy-btn" onclick="copyResumo()">📋 Copiar Resumo para WhatsApp</button>`;
   document.getElementById('resumoContent').dataset.plain=plain;
 }
 
 function copyResumo(){
   const txt=document.getElementById('resumoContent').dataset.plain;
   if(navigator.clipboard){
-    navigator.clipboard.writeText(txt).then(()=>showToast('✓ Copiado! Cole no grupo da diretoria.')).catch(()=>fallbackCopy(txt));
+    navigator.clipboard.writeText(txt).then(()=>showToast('✓ Resumo Copiado!')).catch(()=>fallbackCopy(txt));
   } else { fallbackCopy(txt); }
 }
 function fallbackCopy(txt){
