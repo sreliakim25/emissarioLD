@@ -1374,9 +1374,18 @@ async function saveDiario(){
       body: JSON.stringify({ data: date, texto })
     });
     const data = await res.json();
-    if(data.success) showToast("✓ Diário salvo!");
+    if(data.success) {
+      showToast("✓ Diário salvo!");
+      // Atualizar localmente para que o Resumo reflita a mudança na hora
+      const idx = DIARIOS.findIndex(d => d.data === date);
+      if(idx >= 0) DIARIOS[idx].texto = texto;
+      else DIARIOS.push({ data: date, texto });
+    }
     else throw new Error(data.error);
-  } catch(e) { showToast("❌ Erro ao salvar"); }
+  } catch(e) { 
+    showToast("❌ Erro ao salvar: " + e.message);
+    console.error(e);
+  }
 }
 
 function syncDiarioDate(val){
