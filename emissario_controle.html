@@ -1395,7 +1395,10 @@ function renderHistoricoDiario(){
           <span>📅 ${ptDate(d)}</span>
           <span id="icon-${idx}" style="font-size:0.7rem;opacity:0.5">▼ expandir</span>
         </div>
-        <div class="hist-body">${log.texto}</div>
+        <div class="hist-body">
+          <div style="margin-bottom:12px">${log.texto}</div>
+          <button class="demo-btn" style="margin:0;padding:5px 12px;font-size:0.7rem;background:var(--vmc-bg);border-color:var(--vmc-border)" onclick="prepareEditDiario('${log.data}')">✏️ Editar Relato</button>
+        </div>
       </div>
     `;
   });
@@ -1413,6 +1416,17 @@ function toggleHist(idx){
   } else {
     el.classList.add('open');
     icon.innerHTML = '▲ recolher';
+  }
+}
+
+function prepareEditDiario(dateStr){
+  const di = document.getElementById('diarioDatePicker');
+  if(di) {
+    di.value = dateStr;
+    syncDiarioDate(dateStr);
+    // Rolar suavemente para o topo do card de lançamento
+    document.getElementById('scr-diario').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast("📝 Relato carregado para edição");
   }
 }
 
