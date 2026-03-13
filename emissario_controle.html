@@ -508,6 +508,7 @@ function trechoKPIs(t){
 
   let projEnd=null, reqD=null, avgD=null, rem=null, atuTotal=0, atuReal=0, atuUn='m';
   const wdLeft = countWD(today, DEADLINE);
+  const trechoDeadline = new Date(t.fim+'T00:00:00');
 
   if(atu && atu.total>0){
     atuTotal = atu.total;
@@ -524,7 +525,6 @@ function trechoKPIs(t){
     else if(rem<=0)               projEnd = new Date(today);
 
     // Metro/dia necessário para cumprir o prazo do TRECHO
-    const trechoDeadline = new Date(t.fim+'T00:00:00');
     const wdLeftTrecho = countWD(today, trechoDeadline);
     reqD = wdLeftTrecho>0 && rem>0 ? rem/wdLeftTrecho : (rem > 0 ? rem : null);
   } else {
