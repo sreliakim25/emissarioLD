@@ -563,7 +563,7 @@ function overallKPIs(){
       const pct = real / at.total;
       sumRealPct += pct;
       count++;
-      if(at.id.includes('ATU')){
+      if(at.id && at.id.includes('ATU')){
         atuReal += real;
         atuTot += at.total;
       }
@@ -590,7 +590,8 @@ function overallKPIs(){
 // RENDER: DASHBOARD
 // ═══════════════════════════════════════════════════
 function renderDash(){
-  const ov=overallKPIs();
+  try {
+    const ov=overallKPIs();
   const st=idpColor(ov.idp);
 
   const behindGlobal = ov.pP > 0.01 && ov.pA < ov.pP - 0.005;
@@ -753,7 +754,18 @@ function renderDash(){
     </div>`;
   });
 
-  document.getElementById('dashContent').innerHTML=html;
+    document.getElementById('dashContent').innerHTML=html;
+  } catch(err) {
+    console.error("Erro ao renderizar Dashboard:", err);
+    document.getElementById('dashContent').innerHTML=`
+      <div class="alert dan">
+        <span class="alert-ico">❌</span>
+        <div>
+          <div class="alert-t">Erro na Renderização</div>
+          <div class="alert-b">Ocorreu um erro ao processar os dados do painel: ${err.message}. Tente sincronizar com o Excel ou recarregar a página.</div>
+        </div>
+      </div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════
