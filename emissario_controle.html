@@ -1373,10 +1373,17 @@ async function saveDiario(){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: date, texto })
     });
+    
+    const contentType = res.headers.get("content-type");
+    if (!res.ok || !contentType || !contentType.includes("application/json")) {
+      const text = await res.text();
+      console.error("Resposta não-JSON:", text);
+      throw new Error("O servidor não respondeu com JSON. Certifique-se de que reiniciou o servidor local (npm start) após as atualizações de hoje.");
+    }
+
     const data = await res.json();
     if(data.success) {
       showToast("✓ Diário salvo!");
-      // Atualizar localmente para que o Resumo reflita a mudança na hora
       const idx = DIARIOS.findIndex(d => d.data === date);
       if(idx >= 0) DIARIOS[idx].texto = texto;
       else DIARIOS.push({ data: date, texto });
