@@ -615,7 +615,7 @@ function renderDash(){
       // Sem projeção ATU mas está atrasado no geral
       projH=`<div style="font-size:.75rem;color:#dc2626;margin-top:6px">⚠ Ritmo atual abaixo do planejado — ajustar produção</div>`;
     }
-    html+=`<div class="tc" style="border-left-color:${k.idp>=0.95?'#15803d':k.idp>=0.80?'#c2410c':'var(--vmc-red)'};${behindPlan?'background:rgba(139,26,26,.03)':''}">
+    html+=`<div class="tc" style="border-left-color:${k.idp>=0.95?'#15803d':k.idp>=0.80?'#c2410c':'var(--vmc-red)'}">
       <div class="tc-hdr">
         <div><div class="tc-name">${t.nome}${statusBadge}</div>
           <div class="tc-meta"><span>📅 ${ptDate(new Date(t.inicio+'T00:00:00'))}</span><span>🏁 ${ptDate(new Date(t.fim+'T00:00:00'))}</span></div>
