@@ -199,6 +199,20 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .summary-item:last-child{border-bottom:none}
   .summary-val{font-weight:700;color:var(--vmc-ink)}
   .summary-date{text-align:center;font-size:1rem;color:var(--vmc-ink);font-weight:700;margin-bottom:15px;padding-bottom:10px;border-bottom:2px dashed #e2e8f0}
+
+  /* Map Styles */
+  .map-container{background:#fff;border-radius:16px;padding:25px;box-shadow:var(--vmc-sh);margin-top:15px;min-height:350px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
+  .map-svg{width:100%;max-width:600px;height:auto;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.05))}
+  .map-path-bg{fill:none;stroke:#f1f5f9;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
+  .map-path-plan{fill:none;stroke:var(--vmc-red);stroke-width:14;stroke-linecap:round;stroke-linejoin:round;opacity:0.15}
+  .map-path-real{fill:none;stroke:var(--vmc-red);stroke-width:14;stroke-linecap:round;stroke-linejoin:round;transition:stroke-dasharray 1s ease-out}
+  .map-node{fill:#fff;stroke:var(--vmc-red);stroke-width:3;r:5;transition:all 0.3s}
+  .map-node:hover{r:7;fill:var(--vmc-red)}
+  .map-label{font-family:'Crimson Pro',serif;font-size:12px;font-weight:700;fill:var(--vmc-ink)}
+  .map-hint{font-size:.7rem;color:var(--vmc-gray);margin-top:10px;text-align:center}
+  .map-legend{display:flex;gap:15px;margin-top:20px;font-size:.75rem;color:var(--vmc-gray)}
+  .leg-item{display:flex;align-items:center;gap:6px}
+  .leg-box{width:12px;height:12px;border-radius:3px}
 </style>
 
 </head>
@@ -268,6 +282,20 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   <div class="sec-title">📋 Resumo</div>
   <div id="resumoContent"></div>
 </div>
+
+<!-- MAPA -->
+<div class="scr" id="scr-mapa">
+  <div class="sec-title">📍 Gestão Visual — Traçado Linear</div>
+  <div class="map-container">
+    <div id="mapContent" style="width:100%"></div>
+    <div class="map-legend">
+      <div class="leg-item"><div class="leg-box" style="background:var(--vmc-red)"></div> Realizado</div>
+      <div class="leg-item"><div class="leg-box" style="background:var(--vmc-red);opacity:0.2"></div> Planejado</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f1f5f9"></div> Total</div>
+    </div>
+    <div class="map-hint">💡 Os traçados representam a rede de esgotamento e o avanço físico por trecho.</div>
+  </div>
+</div>
 <!-- SUCCESS MODAL -->
 <div class="success-modal-overlay" id="successModal" onclick="closeSuccessModal()">
   <div class="success-modal" onclick="event.stopPropagation()">
@@ -287,6 +315,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
   <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
   <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
+  <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>Mapa</button>
   <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
 </nav>
 
@@ -1052,6 +1081,80 @@ function fallbackCopy(txt){
   try{document.execCommand('copy');showToast('✓ Copiado!');}catch(e){showToast('Erro ao copiar');}
   document.body.removeChild(ta);
 }
+function renderMapa(){
+  const k1 = trechoKPIs(TRECHOS[0]);
+  const k2 = trechoKPIs(TRECHOS[1]);
+  const k3 = trechoKPIs(TRECHOS[2]);
+
+  const p1 = Math.min(k1.pA, 1);
+  const p2 = Math.min(k2.pA, 1);
+  const p3 = Math.min(k3.pA, 1);
+  
+  const pl1 = Math.min(k1.pP, 1);
+  const pl2 = Math.min(k2.pP, 1);
+  const pl3 = Math.min(k3.pP, 1);
+
+  const L = 160; // Comprimento de cada trecho no SVG
+  
+  const svg = `
+  <svg viewBox="0 0 600 300" class="map-svg">
+    <!-- Definição de Gradientes/Filtros se necessário -->
+    
+    <!-- TRECHO 1: Curva Inicial -->
+    <path class="map-path-bg" d="M 50 150 L 200 150" />
+    <path class="map-path-plan" d="M 50 150 L ${50 + (150 * pl1)} 150" />
+    <path class="map-path-real" d="M 50 150 L ${50 + (150 * p1)} 150" style="stroke-dasharray: ${150 * p1}, 1000" />
+    
+    <!-- TRECHO 2: Curva Média -->
+    <path class="map-path-bg" d="M 200 150 L 350 100" />
+    <path class="map-path-plan" d="M 200 150 L ${200 + (150 * pl2 * 1)} ${150 - (50 * pl2 * 1)}" />
+    <path class="map-path-real" d="M 200 150 L ${200 + (150 * p2 * 1)} ${150 - (50 * p2 * 1)}" />
+
+    <!-- TRECHO 3: Final -->
+    <path class="map-path-bg" d="M 350 100 L 550 100" />
+    <path class="map-path-plan" d="M 350 100 L ${350 + (200 * pl3)} 100" />
+    <path class="map-path-real" d="M 350 100 L ${350 + (200 * p3)} 100" />
+
+    <!-- NOODLES / MARCOS -->
+    <circle class="map-node" cx="50" cy="150" />
+    <circle class="map-node" cx="200" cy="150" onclick="goTrecho(1)" />
+    <circle class="map-node" cx="350" cy="100" onclick="goTrecho(2)" />
+    <circle class="map-node" cx="550" cy="100" onclick="goTrecho(3)" />
+
+    <!-- LABELS -->
+    <text x="50" y="180" class="map-label" text-anchor="middle">Início</text>
+    <text x="125" y="140" class="map-label" text-anchor="middle">Trecho 1 (${fmtPct(p1)})</text>
+    <text x="275" y="110" class="map-label" text-anchor="middle">Trecho 2 (${fmtPct(p2)})</text>
+    <text x="450" y="90" class="map-label" text-anchor="middle">Trecho 3 (${fmtPct(p3)})</text>
+    <text x="550" y="80" class="map-label" text-anchor="middle">Estação Elevatória</text>
+  </svg>
+  
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:20px">
+    <div class="ov-card" style="padding:15px;text-align:center">
+       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 1</div>
+       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p1)}</div>
+       <div style="font-size:.65rem">${fmtNum(k1.atuReal,0)}m / ${fmtNum(k1.atuTotal,0)}m</div>
+    </div>
+    <div class="ov-card" style="padding:15px;text-align:center">
+       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 2</div>
+       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p2)}</div>
+       <div style="font-size:.65rem">${fmtNum(k2.atuReal,0)}m / ${fmtNum(k2.atuTotal,0)}m</div>
+    </div>
+    <div class="ov-card" style="padding:15px;text-align:center">
+       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 3</div>
+       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p3)}</div>
+       <div style="font-size:.65rem">${fmtNum(k3.atuReal,0)}m / ${fmtNum(k3.atuTotal,0)}m</div>
+    </div>
+  </div>
+  `;
+  document.getElementById('mapContent').innerHTML = svg;
+}
+
+function goTrecho(id){
+  selT = id;
+  // Simular clique na aba "Lançar" para mostrar detalhes? 
+  // Por enquanto apenas renderiza o Dash se for o dashboard
+}
 
 // ═══════════════════════════════════════════════════
 // DEMO DATA
@@ -1079,9 +1182,9 @@ function go(name){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
   document.getElementById('scr-'+name).classList.add('act');
-  const idx=['dashboard','lancar','gantt','cronograma','resumo'].indexOf(name);
+  const idx=['dashboard','lancar','gantt','cronograma','mapa','resumo'].indexOf(name);
   if(idx>=0) document.querySelectorAll('.bn')[idx].classList.add('act');
-  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,resumo:renderResumo};
+  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,resumo:renderResumo};
   if(renders[name]) renders[name]();
   window.scrollTo(0,0);
 }
