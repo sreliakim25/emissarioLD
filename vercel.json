@@ -4,17 +4,9 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "*.{html,png,json,js}",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server.js"
-    },
     {
       "src": "/logo.png",
       "dest": "/logo.png"
@@ -28,12 +20,12 @@
       "dest": "/sw.js"
     },
     {
-      "src": "/",
-      "dest": "/emissario_controle.html"
+      "src": "/api/(.*)",
+      "dest": "server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "server.js"
     }
   ]
 }

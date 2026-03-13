@@ -77,6 +77,12 @@ app.get('/api/dashboard', async (req, res) => {
       if(p.data_prevista > at.fim) at.fim = p.data_prevista;
     }
 
+    // 3. Puxar Diários de Obra
+    const { data: diarios, error: errD } = await supabase.from('diario_obra').select('*');
+    if (errD) {
+      console.warn("Tabela diario_obra não encontrada ou erro:", errD.message);
+    }
+
     // Array de Trechos montado dinamicamente
     const trechos = Object.values(trechosMap).map(t => {
        return {
@@ -85,7 +91,7 @@ app.get('/api/dashboard', async (req, res) => {
        };
     });
     
-    res.json({ success: true, actuals: state, trechos: trechos });
+    res.json({ success: true, actuals: state, trechos: trechos, diarios: diarios || [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -114,6 +120,30 @@ app.post('/api/lancamento', async (req, res) => {
       .from('producao_realizada')
       .upsert(upsertRows, { onConflict: 'trecho_id, atividade_sigla, data_lancamento' });
       
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoints para Diário de Obra
+app.get('/api/diario', async (req, res) => {
+  if(!supabase) return res.status(500).json({error: "Supabase não configurado"});
+  const { data } = req.query;
+  try {
+    const { data: row, error } = await supabase.from('diario_obra').select('texto').eq('data', data).single();
+    res.json({ texto: row ? row.texto : "" });
+  } catch (err) {
+    res.json({ texto: "" });
+  }
+});
+
+app.post('/api/diario', async (req, res) => {
+  if(!supabase) return res.status(500).json({error: "Supabase não configurado"});
+  const { data, texto } = req.body;
+  try {
+    const { error } = await supabase.from('diario_obra').upsert({ data, texto }, { onConflict: 'data' });
     if (error) throw error;
     res.json({ success: true });
   } catch (err) {

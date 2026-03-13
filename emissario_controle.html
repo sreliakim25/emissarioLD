@@ -6,14 +6,14 @@
 <title>Emissário Leão Dourado | Viana &amp; Moura</title>
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
-<link rel="icon" type="image/png" href="/logo.png">
-<link rel="shortcut icon" href="/logo.png">
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="shortcut icon" href="logo.png">
 <meta name="theme-color" content="#8B1A1A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Emissário LD">
-<link rel="apple-touch-icon" href="/logo.png">
+<link rel="apple-touch-icon" href="logo.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <meta name="description" content="Controle de obra do Emissário Leão Dourado — Viana &amp; Moura Construções">
@@ -312,6 +312,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
   <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
   <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>Mapa</button>
+  <button class="bn" onclick="go('diario')"><span class="bn-icon">📝</span>Diário</button>
   <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
 </nav>
 
@@ -405,11 +406,10 @@ async function loadState(){
   try {
     const res = await fetch('/api/dashboard');
     const data = await res.json();
-    if(data.success && data.actuals) {
-      actuals = data.actuals;
-    }
-    if (data.success && data.trechos) {
-      TRECHOS = data.trechos;
+    if(data.success) {
+      actuals = data.actuals || {};
+      TRECHOS = data.trechos || [];
+      DIARIOS = data.diarios || [];
       
       // Atualizar abas se novos trechos existirem
       const tTabs = document.querySelector('.t-tabs');
@@ -1037,6 +1037,17 @@ function renderResumo(){
     lines.push(``);
   });
 
+  // DIÁRIOS DA SEMANA
+  const diariosSemana = DIARIOS.filter(d => d.data >= fd(mon) && d.data <= fd(fri) && d.texto.trim() !== "");
+  if(diariosSemana.length > 0){
+    lines.push(`📝 *OCORRÊNCIAS DO DIÁRIO*`);
+    diariosSemana.forEach(d => {
+      const dd = new Date(d.data+'T00:00:00');
+      lines.push(`▸ ${dd.getDate()}/${dd.getMonth()+1}: ${d.texto}`);
+    });
+    lines.push(``);
+  }
+
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
   const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
   const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+4);
@@ -1254,6 +1265,38 @@ async function loadDemo(){
   btn.innerHTML = '🎯 Sincronizar Base com Excel';
 }
 
+async function renderDiario(){
+  const date = document.getElementById('inputDate').value;
+  const d = new Date(date+'T00:00:00');
+  document.getElementById('diarioDateHdr').textContent = `Relato para o dia ${ptDate(d)}`;
+  document.getElementById('diarioText').value = "Carregando...";
+  
+  try {
+    const res = await fetch(`/api/diario?data=${date}`);
+    const data = await res.json();
+    document.getElementById('diarioText').value = data.texto || "";
+  } catch(e) {
+    document.getElementById('diarioText').value = "";
+  }
+}
+
+async function saveDiario(){
+  const date = document.getElementById('inputDate').value;
+  const texto = document.getElementById('diarioText').value;
+  try {
+    const res = await fetch('/api/diario', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: date, texto })
+    });
+    const data = await res.json();
+    if(data.success) showToast("✓ Diário salvo!");
+    else throw new Error(data.error);
+  } catch(e) { showToast("❌ Erro ao salvar"); }
+}
+
+let DIARIOS = [];
+
 // ═══════════════════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════════════════
@@ -1261,9 +1304,9 @@ function go(name){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
   document.getElementById('scr-'+name).classList.add('act');
-  const idx=['dashboard','lancar','gantt','cronograma','mapa','resumo'].indexOf(name);
+  const idx=['dashboard','lancar','gantt','cronograma','mapa','diario','resumo'].indexOf(name);
   if(idx>=0) document.querySelectorAll('.bn')[idx].classList.add('act');
-  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,resumo:renderResumo};
+  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,diario:renderDiario,resumo:renderResumo};
   if(renders[name]) renders[name]();
   window.scrollTo(0,0);
 }
@@ -1291,6 +1334,16 @@ async function init(){
 
 init();
 </script>
+<!-- DIÁRIO -->
+<div class="scr" id="scr-diario">
+  <div class="sec-title">📝 Diário de Obra</div>
+  <div class="ov-card" style="padding:20px">
+    <div style="font-size:0.9rem;font-weight:600;color:var(--vmc-ink);margin-bottom:10px" id="diarioDateHdr"></div>
+    <textarea id="diarioText" style="width:100%;height:300px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:inherit;font-size:0.9rem;resize:none" placeholder="Digite aqui o relato das ocorrências do dia..."></textarea>
+    <button class="btn-confirm" style="width:100%;margin-top:15px" onclick="saveDiario()">💾 Salvar Relato do Dia</button>
+  </div>
+</div>
+
 <!-- Modal de Confirmação -->
 <div id="confirmModal" class="modal-overlay">
   <div class="modal-card">
