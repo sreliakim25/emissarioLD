@@ -523,8 +523,10 @@ function trechoKPIs(t){
     if(avgD && avgD>0 && rem>0)  projEnd = addWD(today, Math.ceil(rem/avgD));
     else if(rem<=0)               projEnd = new Date(today);
 
-    // Metro/dia necessário para cumprir o prazo
-    reqD = wdLeft>0 && rem>0 ? rem/wdLeft : null;
+    // Metro/dia necessário para cumprir o prazo do TRECHO
+    const trechoDeadline = new Date(t.fim+'T00:00:00');
+    const wdLeftTrecho = countWD(today, trechoDeadline);
+    reqD = wdLeftTrecho>0 && rem>0 ? rem/wdLeftTrecho : (rem > 0 ? rem : null);
   } else {
     // Fallback sem ATU: usa ponderado genérico
     const elapsed = countWD(new Date(t.inicio+'T00:00:00'), today);
@@ -542,26 +544,45 @@ function trechoKPIs(t){
 
 
   return {tp, ta, tpd, pA, pP, idp, projEnd, reqD, avgD, rem,
-          wdLeft, atuTotal, atuReal, atuUn};
+          wdLeft, atuTotal, atuReal, atuUn, trechoDeadline};
 }
 
 function overallKPIs(){
-  // Suma o sumPeso/sumRealPct/sumPrevistoPct de TODAS as atividades de todos os trechos
-  // (equal to what each trecho card shows, just aggregated)
-  let totalPeso=0, totalReal=0, totalPrev=0;
+  // O progresso Geral é a média ponderada do volume de todas as atividades.
+  // Como as unidades variam (m, m³, un), usamos a soma dos percentuais dividida pelo número de frentes
+  // MAS damos peso maior para o Assentamento (ATU) se quisermos, ou mantemos a média de todas.
+  let sumRealPct = 0;
+  let count = 0;
+  let atuReal = 0;
+  let atuTot = 0;
+
   TRECHOS.forEach(t=>{
     t.atividades.forEach(at=>{
       if(at.total<=0) return;
-      totalPeso += at.total;
-      totalReal += actualTotal(at.id);
-      totalPrev += plannedToDate(at, today);
+      const real = actualTotal(at.id);
+      const pct = real / at.total;
+      sumRealPct += pct;
+      count++;
+      if(at.id.includes('ATU')){
+        atuReal += real;
+        atuTot += at.total;
+      }
     });
   });
-  const pA = totalPeso>0 ? totalReal/totalPeso  : 0;
-  const pP = totalPeso>0 ? totalPrev/totalPeso  : 0;
-  const idp = pP>0.001 ? pA/pP : (pA>0 ? 1.5 : 1.0);
+
+  const pA = count > 0 ? sumRealPct / count : 0; // Média simples de avanço das frentes
+  const pA_atu = atuTot > 0 ? atuReal / atuTot : 0; // Avanço físico só de tubos
   const wdLeft = countWD(today, DEADLINE);
-  return {pA, pP, idp, wdLeft};
+  
+  // Para o IDP global, comparamos o realizado médio com o previsto médio
+  let sumPrevPct = 0;
+  TRECHOS.forEach(t=>t.atividades.forEach(at=>{
+    if(at.total>0) sumPrevPct += (plannedToDate(at, today) / at.total);
+  }));
+  const pP = count > 0 ? sumPrevPct / count : 0;
+  const idp = pP > 0.001 ? pA / pP : (pA > 0 ? 1.5 : 1.0);
+
+  return {pA, pA_atu, pP, idp, wdLeft};
 }
 
 
@@ -584,7 +605,7 @@ function renderDash(){
     const k=trechoKPIs(t);
     if(k.pP > 0.01 && k.pA < k.pP - 0.005){
       const defasagem = fmtPct(k.pP - k.pA);
-      const metaATU = k.reqD ? ` · meta: <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong>` : '';
+      const metaATU = k.reqD ? ` · meta p/ bater prazo do trecho (${ptDate(k.trechoDeadline)}): <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong>` : '';
       delaySummary += `<div style="margin-top:4px;font-size:.73rem;color:#7f1d1d">
         🚨 <strong>${t.nome}</strong> — defasagem ${defasagem}${metaATU}
       </div>`;
@@ -592,10 +613,13 @@ function renderDash(){
   });
 
   let html=`<div class="ov-card" style="${behindGlobal?'border:1.5px solid #fca5a5':''}">
-    <div class="ov-label">Progresso Geral — Emissário</div>
+    <div class="ov-label">Progresso Médio da Obra — Todas as Frentes</div>
     <div class="ov-pct" style="color:${behindGlobal?'#991b1b':'var(--vmc-red)'}">${fmtPct(ov.pA)}</div>
     <div class="pw"><div class="pb w" style="width:${Math.min(ov.pA*100,100)}%"></div></div>
-    <div class="ov-detail">Previsto hoje: ${fmtPct(ov.pP)} &nbsp;·&nbsp; IDP: <strong style="color:${behindGlobal?'#dc2626':'var(--vmc-ink)'}">${fmtNum(ov.idp,2)}</strong> &nbsp;·&nbsp; <strong style="color:var(--vmc-ink)">${ov.wdLeft}</strong> dias úteis até 30/04</div>
+    <div class="ov-detail">
+      <strong>Avanço Físico (Assentamento): ${fmtPct(ov.pA_atu)}</strong><br>
+      Previsto hoje: ${fmtPct(ov.pP)} &nbsp;·&nbsp; IDP Global: <strong style="color:${behindGlobal?'#dc2626':'var(--vmc-ink)'}">${fmtNum(ov.idp,2)}</strong> &nbsp;·&nbsp; <strong style="color:var(--vmc-ink)">${ov.wdLeft}</strong> dias úteis até 30/04
+    </div>
     <span class="chip ${chipCls}">${chipTxt}</span>
     ${behindGlobal ? `
     <div style="margin-top:10px;padding:10px 12px;background:#fff5f5;border-radius:8px;border-left:3px solid #dc2626">
@@ -616,7 +640,7 @@ function renderDash(){
         <span class="alert-ico">🚨</span>
         <div><div class="alert-t">${t.nome} — Prazo em Risco</div>
         <div class="alert-b">Projeção de conclusão (Assentamento de Tubulação): <strong>${ptDate(k.projEnd)}</strong> (${delay} dia${delay>1?'s':''} após 30/04).<br>
-        ${ritmoAtual}Meta necessária: <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong> de Assentamento em <strong>${k.wdLeft} jornadas</strong>.<br>
+        ${ritmoAtual}Meta p/ bater prazo do Trecho (${ptDate(k.trechoDeadline)}): <strong>${fmtNum(k.reqD,1)} ${k.atuUn}/dia</strong> em <strong>${countWD(today, k.trechoDeadline)} jornadas</strong>.<br>
         📌 Ampliar frente de trabalho ou aumentar produtividade de assentamento.</div></div>
       </div>`;
     } else if(k.idp<0.95&&k.idp>=0.80){
