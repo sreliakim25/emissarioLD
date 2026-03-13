@@ -14,6 +14,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Emissário LD">
 <link rel="apple-touch-icon" href="/logo.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <meta name="description" content="Controle de obra do Emissário Leão Dourado — Viana &amp; Moura Construções">
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -200,19 +202,12 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .summary-val{font-weight:700;color:var(--vmc-ink)}
   .summary-date{text-align:center;font-size:1rem;color:var(--vmc-ink);font-weight:700;margin-bottom:15px;padding-bottom:10px;border-bottom:2px dashed #e2e8f0}
 
-  /* Map Styles */
-  .map-container{background:#fff;border-radius:16px;padding:25px;box-shadow:var(--vmc-sh);margin-top:15px;min-height:350px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
-  .map-svg{width:100%;max-width:600px;height:auto;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.05))}
-  .map-path-bg{fill:none;stroke:#f1f5f9;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
-  .map-path-plan{fill:none;stroke:var(--vmc-red);stroke-width:14;stroke-linecap:round;stroke-linejoin:round;opacity:0.15}
-  .map-path-real{fill:none;stroke:var(--vmc-red);stroke-width:14;stroke-linecap:round;stroke-linejoin:round;transition:stroke-dasharray 1s ease-out}
-  .map-node{fill:#fff;stroke:var(--vmc-red);stroke-width:3;r:5;transition:all 0.3s}
-  .map-node:hover{r:7;fill:var(--vmc-red)}
-  .map-label{font-family:'Crimson Pro',serif;font-size:12px;font-weight:700;fill:var(--vmc-ink)}
-  .map-hint{font-size:.7rem;color:var(--vmc-gray);margin-top:10px;text-align:center}
-  .map-legend{display:flex;gap:15px;margin-top:20px;font-size:.75rem;color:var(--vmc-gray)}
-  .leg-item{display:flex;align-items:center;gap:6px}
-  .leg-box{width:12px;height:12px;border-radius:3px}
+  .map-container{background:#fff;border-radius:16px;padding:15px;box-shadow:var(--vmc-sh);margin-top:10px;min-height:450px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+  #mapContent{width:100%;height:350px;border-radius:12px;z-index:10}
+  .map-legend{display:flex;gap:12px;margin-top:15px;font-size:.7rem;color:var(--vmc-gray);justify-content:center;flex-wrap:wrap}
+  .leg-item{display:flex;align-items:center;gap:4px}
+  .leg-box{width:10px;height:10px;border-radius:2px}
+  .map-overlay-info{position:absolute;top:25px;right:25px;z-index:20;background:rgba(255,255,255,0.9);padding:10px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);font-size:0.75rem;pointer-events:none}
 </style>
 
 </head>
@@ -287,13 +282,13 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <div class="scr" id="scr-mapa">
   <div class="sec-title">📍 Gestão Visual — Traçado Linear</div>
   <div class="map-container">
-    <div id="mapContent" style="width:100%"></div>
+    <div id="mapContent"></div>
+    <div class="map-overlay-info" id="mapInfo">Clique em um trecho</div>
     <div class="map-legend">
       <div class="leg-item"><div class="leg-box" style="background:var(--vmc-red)"></div> Realizado</div>
-      <div class="leg-item"><div class="leg-box" style="background:var(--vmc-red);opacity:0.2"></div> Planejado</div>
-      <div class="leg-item"><div class="leg-box" style="background:#f1f5f9"></div> Total</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f1f5f9;border:1px solid #ddd"></div> Projetado</div>
     </div>
-    <div class="map-hint">💡 Os traçados representam a rede de esgotamento e o avanço físico por trecho.</div>
+    <div class="map-hint">📍 Mapa real georeferenciado com visão de satélite.</div>
   </div>
 </div>
 <!-- SUCCESS MODAL -->
@@ -1081,79 +1076,133 @@ function fallbackCopy(txt){
   try{document.execCommand('copy');showToast('✓ Copiado!');}catch(e){showToast('Erro ao copiar');}
   document.body.removeChild(ta);
 }
+let map = null;
+const MAP_COORDS = {
+  center: [-8.2750, -35.9890], // Região de Leão Dourado, Caruaru
+  t1: [[-8.2710,-35.9860], [-8.2735,-35.9880], [-8.2745,-35.9910]],
+  t2: [[-8.2745,-35.9910], [-8.2760,-35.9935], [-8.2780,-35.9950]],
+  t3: [[-8.2780,-35.9950], [-8.2810,-35.9975], [-8.2830,-35.9990]]
+};
+
 function renderMapa(){
-  const k1 = trechoKPIs(TRECHOS[0]);
-  const k2 = trechoKPIs(TRECHOS[1]);
-  const k3 = trechoKPIs(TRECHOS[2]);
+  if(map){ 
+    setTimeout(() => map.invalidateSize(), 100);
+    drawMapData();
+    return;
+  }
 
-  const p1 = Math.min(k1.pA, 1);
-  const p2 = Math.min(k2.pA, 1);
-  const p3 = Math.min(k3.pA, 1);
-  
-  const pl1 = Math.min(k1.pP, 1);
-  const pl2 = Math.min(k2.pP, 1);
-  const pl3 = Math.min(k3.pP, 1);
+  // Inicializar Mapa
+  map = L.map('mapContent', {
+    center: MAP_COORDS.center,
+    zoom: 15,
+    zoomControl: false
+  });
 
-  const L = 160; // Comprimento de cada trecho no SVG
-  
-  const svg = `
-  <svg viewBox="0 0 600 300" class="map-svg">
-    <!-- Definição de Gradientes/Filtros se necessário -->
+  // Camada Satélite Esri
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri'
+  }).addTo(map);
+
+  // Camada de Ruas (sobreposta leve se quiser)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    opacity: 0.3
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  drawMapData();
+}
+
+let mapLayers = [];
+function drawMapData(){
+  // Limpar camadas anteriores
+  mapLayers.forEach(l => l.remove());
+  mapLayers = [];
+
+  const trechosData = [
+    { coords: MAP_COORDS.t1, kpi: trechoKPIs(TRECHOS[0]), label: 'Trecho 1' },
+    { coords: MAP_COORDS.t2, kpi: trechoKPIs(TRECHOS[1]), label: 'Trecho 2' },
+    { coords: MAP_COORDS.t3, kpi: trechoKPIs(TRECHOS[2]), label: 'Trecho 3' }
+  ];
+
+  trechosData.forEach((td, idx) => {
+    const k = td.kpi;
+    const points = td.coords;
     
-    <!-- TRECHO 1: Curva Inicial -->
-    <path class="map-path-bg" d="M 50 150 L 200 150" />
-    <path class="map-path-plan" d="M 50 150 L ${50 + (150 * pl1)} 150" />
-    <path class="map-path-real" d="M 50 150 L ${50 + (150 * p1)} 150" style="stroke-dasharray: ${150 * p1}, 1000" />
-    
-    <!-- TRECHO 2: Curva Média -->
-    <path class="map-path-bg" d="M 200 150 L 350 100" />
-    <path class="map-path-plan" d="M 200 150 L ${200 + (150 * pl2 * 1)} ${150 - (50 * pl2 * 1)}" />
-    <path class="map-path-real" d="M 200 150 L ${200 + (150 * p2 * 1)} ${150 - (50 * p2 * 1)}" />
+    // 1. Desenhar fundo (total)
+    const bg = L.polyline(points, {
+      color: '#f1f5f9',
+      weight: 12,
+      opacity: 0.8,
+      lineCap: 'round'
+    }).addTo(map);
+    mapLayers.push(bg);
 
-    <!-- TRECHO 3: Final -->
-    <path class="map-path-bg" d="M 350 100 L 550 100" />
-    <path class="map-path-plan" d="M 350 100 L ${350 + (200 * pl3)} 100" />
-    <path class="map-path-real" d="M 350 100 L ${350 + (200 * p3)} 100" />
+    // 2. Desenhar realizado (preenchimento proporcional)
+    const pA = Math.min(k.pA, 1);
+    if(pA > 0){
+      // Calcula o sub-segmento das coordenadas baseado no progresso
+      const subPoints = getPartialPath(points, pA);
+      const real = L.polyline(subPoints, {
+        color: '#8B1A1A',
+        weight: 12,
+        opacity: 0.9,
+        lineCap: 'round'
+      }).addTo(map);
+      
+      real.on('click', () => {
+        document.getElementById('mapInfo').innerHTML = `<strong>${td.label}</strong><br>${fmtPct(k.pA)} concluído<br>${fmtNum(k.atuReal,0)}m de ${fmtNum(k.atuTotal,0)}m`;
+      });
+      mapLayers.push(real);
+    }
 
-    <!-- NOODLES / MARCOS -->
-    <circle class="map-node" cx="50" cy="150" />
-    <circle class="map-node" cx="200" cy="150" onclick="goTrecho(1)" />
-    <circle class="map-node" cx="350" cy="100" onclick="goTrecho(2)" />
-    <circle class="map-node" cx="550" cy="100" onclick="goTrecho(3)" />
+    // Marcadores de início/fim
+    if(idx === 0){
+      const startMark = L.circleMarker(points[0], { radius: 6, color: '#8B1A1A', fillColor:'#fff', fillOpacity:1, weight:3 }).addTo(map);
+      mapLayers.push(startMark);
+    }
+    const endMark = L.circleMarker(points[points.length-1], { radius: 6, color: '#8B1A1A', fillColor:'#fff', fillOpacity:1, weight:3 }).addTo(map);
+    endMark.bindTooltip(td.label, { permanent: true, direction: 'right', className: 'map-tooltip' });
+    mapLayers.push(endMark);
+  });
+}
 
-    <!-- LABELS -->
-    <text x="50" y="180" class="map-label" text-anchor="middle">Início</text>
-    <text x="125" y="140" class="map-label" text-anchor="middle">Trecho 1 (${fmtPct(p1)})</text>
-    <text x="275" y="110" class="map-label" text-anchor="middle">Trecho 2 (${fmtPct(p2)})</text>
-    <text x="450" y="90" class="map-label" text-anchor="middle">Trecho 3 (${fmtPct(p3)})</text>
-    <text x="550" y="80" class="map-label" text-anchor="middle">Estação Elevatória</text>
-  </svg>
+function getPartialPath(points, pct){
+  if(pct >= 1) return points;
+  if(pct <= 0) return [points[0]];
   
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:20px">
-    <div class="ov-card" style="padding:15px;text-align:center">
-       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 1</div>
-       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p1)}</div>
-       <div style="font-size:.65rem">${fmtNum(k1.atuReal,0)}m / ${fmtNum(k1.atuTotal,0)}m</div>
-    </div>
-    <div class="ov-card" style="padding:15px;text-align:center">
-       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 2</div>
-       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p2)}</div>
-       <div style="font-size:.65rem">${fmtNum(k2.atuReal,0)}m / ${fmtNum(k2.atuTotal,0)}m</div>
-    </div>
-    <div class="ov-card" style="padding:15px;text-align:center">
-       <div style="font-size:.7rem;color:var(--vmc-gray)">TRECHO 3</div>
-       <div style="font-size:1.1rem;font-weight:700;color:var(--vmc-red)">${fmtPct(p3)}</div>
-       <div style="font-size:.65rem">${fmtNum(k3.atuReal,0)}m / ${fmtNum(k3.atuTotal,0)}m</div>
-    </div>
-  </div>
-  `;
-  document.getElementById('mapContent').innerHTML = svg;
+  let totalDist = 0;
+  for(let i=0; i<points.length-1; i++){
+    totalDist += L.latLng(points[i]).distanceTo(L.latLng(points[i+1]));
+  }
+  
+  let targetDist = totalDist * pct;
+  let currentDist = 0;
+  let newPoints = [points[0]];
+  
+  for(let i=0; i<points.length-1; i++){
+    let p1 = L.latLng(points[i]);
+    let p2 = L.latLng(points[i+1]);
+    let d = p1.distanceTo(p2);
+    
+    if(currentDist + d <= targetDist){
+      newPoints.push(points[i+1]);
+      currentDist += d;
+    } else {
+      let remaining = targetDist - currentDist;
+      let ratio = remaining / d;
+      let lat = p1.lat + (p2.lat - p1.lat) * ratio;
+      let lng = p1.lng + (p2.lng - p1.lng) * ratio;
+      newPoints.push([lat, lng]);
+      break;
+    }
+  }
+  return newPoints;
 }
 
 function goTrecho(id){
   selT = id;
-  // Simular clique na aba "Lançar" para mostrar detalhes? 
-  // Por enquanto apenas renderiza o Dash se for o dashboard
+  go('lancar');
 }
 
 // ═══════════════════════════════════════════════════
