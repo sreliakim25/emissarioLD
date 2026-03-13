@@ -181,7 +181,26 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 .txt-g{color:var(--green)}.txt-o{color:var(--orange)}.txt-r{color:var(--vmc-red)}
 @media(min-width:600px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:800px){.kpi-grid{grid-template-columns:repeat(5,1fr)}}
+  /* Modals */
+  .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;padding:20px;backdrop-filter:blur(3px)}
+  .modal-card{background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3);animation:popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)}
+  @keyframes popIn { from{transform:scale(0.8);opacity:0} to{transform:scale(1);opacity:1} }
+  .modal-hdr{background:var(--vmc-red);color:#fff;padding:18px;text-align:center}
+  .modal-hdr h3{margin:0;font-size:1.1rem;font-weight:700}
+  .modal-body{padding:20px;max-height:60vh;overflow-y:auto}
+  .modal-ftr{padding:15px;display:flex;gap:10px;background:#f9f6f3}
+  .modal-ftr button{flex:1;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;border:none;transition:all 0.2s}
+  .btn-cancel{background:#e2e8f0;color:#475569}
+  .btn-confirm{background:var(--vmc-red);color:#fff}
+  .btn-cancel:hover{background:#cbd5e1}
+  .btn-confirm:hover{background:var(--vmc-red-l)}
+  
+  .summary-item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:0.95rem}
+  .summary-item:last-child{border-bottom:none}
+  .summary-val{font-weight:700;color:var(--vmc-ink)}
+  .summary-date{text-align:center;font-size:1rem;color:var(--vmc-ink);font-weight:700;margin-bottom:15px;padding-bottom:10px;border-bottom:2px dashed #e2e8f0}
 </style>
+
 </head>
 <body>
 
@@ -677,7 +696,7 @@ function renderLancar(){
         </div>
       </div>
       <div class="inp-row">
-        <input type="number" class="qi" id="inp_${at.id}" value="${sv}" min="0" step="0.1" placeholder="0">
+        <input type="number" class="qi" id="inp_${at.id}" value="${sv}" step="0.1" placeholder="0">
         <span class="ul">${at.un}</span>
       </div>
       <div class="pw2" style="margin-top:7px"><div class="pb ${sc}" style="width:${Math.min(pctD*100,100)}%"></div></div>
@@ -692,47 +711,82 @@ function selTrecho(id){
   renderLancar();
 }
 
-async function saveProd(){
+let pendingSave = null;
+
+function showModal(id){ 
+  const m = document.getElementById(id);
+  m.style.display = 'flex'; 
+}
+
+function hideModal(id){ 
+  document.getElementById(id).style.display = 'none'; 
+}
+
+function saveProd(){
   const dateStr=document.getElementById('inputDate').value;
   if(!dateStr){showToast('Selecione uma data');return;}
   
-  const bBtn = document.querySelector('.save-btn');
-  bBtn.textContent = '⏳ Salvando...';
-  bBtn.disabled = true;
-
-  if(!actuals[dateStr]) actuals[dateStr]={};
   const t=TRECHOS.find(t=>t.id===selT);
   let ok=false;
+  let summaryHtml = '';
   let atividadesParaSalvar = {};
   
   t.atividades.forEach(at=>{
     const inp=document.getElementById('inp_'+at.id);
     if(inp){
       const v=parseFloat(inp.value);
-      if(!isNaN(v)&&v>0){
-        actuals[dateStr][at.id]=v;
+      if(!isNaN(v) && v !== 0){
         atividadesParaSalvar[at.id] = v;
+        summaryHtml += `<div class="summary-item">
+          <span>${at.nome}</span>
+          <span class="summary-val" style="color:${v < 0 ? '#dc2626' : 'var(--vmc-ink)'}">${v > 0 ? '+' : ''}${fmtNum(v,1)} ${at.un}</span>
+        </div>`;
         ok=true;
       }
     }
   });
 
   if(ok){
-    try {
-      await saveState(t.id, dateStr, atividadesParaSalvar);
-      showSuccessModal(dateStr);
-      renderDash();
-      renderLancar();
-    } catch(err) {
-      showToast('❌ Erro ao salvar: ' + err.message);
-    }
+    pendingSave = { trechoId: t.id, dateStr, atividades: atividadesParaSalvar };
+    document.getElementById('confirmDate').textContent = ptDate(new Date(dateStr+'T00:00:00'));
+    document.getElementById('confirmList').innerHTML = summaryHtml;
+    showModal('confirmModal');
   } else {
     showToast('Nenhum valor informado');
   }
-  
-  bBtn.textContent = '💾 Salvar Produção do Dia';
-  bBtn.disabled = false;
 }
+
+async function executeSave(){
+  if(!pendingSave) return;
+  hideModal('confirmModal');
+  
+  const bBtn = document.querySelector('.save-btn');
+  const oldText = bBtn.textContent;
+  bBtn.textContent = '⏳ Salvando...';
+  bBtn.disabled = true;
+
+  try {
+    const { trechoId, dateStr, atividades } = pendingSave;
+    await saveState(trechoId, dateStr, atividades);
+    
+    // Atualizar local
+    if(!actuals[dateStr]) actuals[dateStr]={};
+    Object.assign(actuals[dateStr], atividades);
+    
+    document.getElementById('successMsg').textContent = `Produção salva para o dia ${ptDate(new Date(dateStr+'T00:00:00'))}.`;
+    showModal('successModal');
+    
+    renderDash();
+    renderLancar();
+  } catch(err) {
+    showToast('❌ Erro ao salvar: ' + err.message);
+  } finally {
+    bBtn.textContent = oldText;
+    bBtn.disabled = false;
+    pendingSave = null;
+  }
+}
+
 
 // ═══════════════════════════════════════════════════
 // RENDER: GANTT
@@ -1055,7 +1109,38 @@ async function init(){
 
 init();
 </script>
+<!-- Modal de Confirmação -->
+<div id="confirmModal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-hdr"><h3>Confirmar Lançamento</h3></div>
+    <div class="modal-body">
+      <div class="summary-date" id="confirmDate">--/--/----</div>
+      <div id="confirmList"></div>
+      <p style="font-size:0.75rem;color:var(--vmc-gray);margin-top:15px;line-height:1.4">
+        📌 Os valores informados serão salvos no banco de dados. Valores negativos serão subtraídos do total acumulado.
+      </p>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn-cancel" onclick="hideModal('confirmModal')">Cancelar</button>
+      <button class="btn-confirm" onclick="executeSave()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div id="successModal" class="modal-overlay">
+  <div class="modal-card">
+    <div style="padding:30px;text-align:center">
+      <div style="font-size:3rem;margin-bottom:15px">✅</div>
+      <h3 style="color:var(--vmc-ink);margin:0 0 10px 0">Salvo com Sucesso!</h3>
+      <p style="color:var(--vmc-gray);font-size:0.9rem;margin-bottom:20px" id="successMsg"></p>
+      <button class="btn-confirm" style="width:100%" onclick="hideModal('successModal')">Entendido</button>
+    </div>
+  </div>
+</div>
+
 <script>
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
