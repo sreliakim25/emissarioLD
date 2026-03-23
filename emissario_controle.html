@@ -348,6 +348,8 @@ const HOLIDAYS = new Set([
   '2026-04-21','2026-04-25','2026-05-01'
 ]);
 
+let WORKING_DAYS_EXTRA = new Set(); // Any day that has explicitly planned work
+
 const DAY_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MONTH_PT= ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -357,9 +359,13 @@ function fd(d){ // format date → YYYY-MM-DD
 function ptDate(d){ if(!d) return '—'; return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
 function isWD(d){
   if(typeof d==='string') d=new Date(d+'T00:00:00');
+  const ds=fd(d);
+  if(WORKING_DAYS_EXTRA.has(ds)) return true; // Overrides weekends and holidays
+
   const day=d.getDay();
-  if(day===0||day===6) return false;
-  return !HOLIDAYS.has(fd(d));
+  if(day===0) return false;
+  if(day===6) return false;
+  return !HOLIDAYS.has(ds);
 }
 function countWD(s,e){
   let c=0,d=new Date(s);
@@ -425,6 +431,15 @@ async function loadState(){
       actuals = data.actuals || {};
       TRECHOS = data.trechos || [];
       DIARIOS = data.diarios || [];
+      
+      WORKING_DAYS_EXTRA.clear();
+      TRECHOS.forEach(t => t.atividades.forEach(a => {
+        if(a.plano){
+          Object.keys(a.plano).forEach(ds => {
+            if(a.plano[ds] > 0) WORKING_DAYS_EXTRA.add(ds);
+          });
+        }
+      }));
       
       // Atualizar abas se novos trechos existirem
       const tTabs = document.querySelector('.t-tabs');
@@ -500,10 +515,15 @@ function trechoKPIs(t){
   // ── 1. Progresso ponderado (% de cada atividade × peso no total volumétrico) ──
   // Usa apenas atividades homogêneas dentro do mesmo trecho para % geral
   let sumPeso=0, sumRealPct=0, sumPrevistoPct=0;
+  
+  // Como o cálculo de IDP no dia atual joga a meta lá para cima antes de a produção ser lançada,
+  // usamos 'yesterday' para comparar a saúde estrita do plano.
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
+
   t.atividades.forEach(at=>{
     if(at.total<=0) return;
     const aRealizado = actualTotal(at.id);
-    const aPrevisto  = plannedToDate(at, today);
+    const aPrevisto  = plannedToDate(at, yesterday);
     sumPeso       += at.total;
     sumRealPct    += (aRealizado/at.total) * at.total;   // contribuição ponderada realizado
     sumPrevistoPct+= (aPrevisto /at.total) * at.total;   // contribuição ponderada previsto
@@ -526,7 +546,7 @@ function trechoKPIs(t){
     rem      = atuTotal - atuReal;
 
     // Produtividade média real em m/dia (apenas dias úteis desde o início do trecho)
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), today);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterday);
     avgD = elapsed>0 ? atuReal/elapsed : null;
 
     // Projeção de conclusão no ritmo atual
@@ -538,7 +558,7 @@ function trechoKPIs(t){
     reqD = wdLeftTrecho>0 && rem>0 ? rem/wdLeftTrecho : (rem > 0 ? rem : null);
   } else {
     // Fallback sem ATU: usa ponderado genérico
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), today);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterday);
     avgD = null;
     rem  = sumPeso>0 ? (1-pA)*sumPeso : null;
   }
@@ -546,7 +566,7 @@ function trechoKPIs(t){
   // tp/ta para overallKPIs - usa ATU quando existe (ternário explícito para evitar bug com zero)
   const tp  = atu ? atuTotal : sumPeso;
   const ta  = atu ? atuReal  : sumRealPct;
-  const tpd = atu ? plannedToDate(atu, today) : sumPrevistoPct;
+  const tpd = atu ? plannedToDate(atu, yesterday) : sumPrevistoPct;
   // pA/pP para o card do trecho: % ponderada por atividade (unidade-independente)
   // IDP baseado no ponderado (não no ATU bruto) para representar saúde geral do trecho
   const idpCard = pP > 0.001 ? pA/pP : (pA > 0 ? 1.0 : 1.0);
@@ -585,8 +605,9 @@ function overallKPIs(){
   
   // Para o IDP global, comparamos o realizado médio com o previsto médio
   let sumPrevPct = 0;
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
   TRECHOS.forEach(t=>t.atividades.forEach(at=>{
-    if(at.total>0) sumPrevPct += (plannedToDate(at, today) / at.total);
+    if(at.total>0) sumPrevPct += (plannedToDate(at, yesterday) / at.total);
   }));
   const pP = count > 0 ? sumPrevPct / count : 0;
   const idp = pP > 0.001 ? pA / pP : (pA > 0 ? 1.5 : 1.0);
@@ -605,7 +626,7 @@ function renderDash(){
 
   const behindGlobal = ov.pP > 0.01 && ov.pA < ov.pP - 0.005;
   const gap = ov.pP - ov.pA;
-  const anyDelay = TRECHOS.some(t=>{const k=trechoKPIs(t);return k.projEnd&&k.projEnd>k.trechoDeadline;});
+  const anyDelay = TRECHOS.some(t=>{const k=trechoKPIs(t);return k.idp < 0.90 && k.projEnd&&k.projEnd>k.trechoDeadline;});
   const chipCls = anyDelay?'bad':behindGlobal?'warn':'ok';
   const chipTxt = anyDelay?'⚠ Algum trecho em risco!':behindGlobal?'⚠ Em atraso':'✓ Prazo: 30/04';
 
@@ -982,7 +1003,7 @@ function renderCron(){
 
   for(let w = 0; w < 2; w++){
     const mon = new Date(baseDate); mon.setDate(baseDate.getDate() + w * 7);
-    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 5); // Sábado
     const wn = getWeekNum(mon);
     const isPast = fri < today;
     const isCurrent = fd(mon) <= fd(today) && fd(today) <= fd(fri);
@@ -1011,11 +1032,11 @@ function renderCron(){
 
     // --- DIAS ---
     let daysH = '';
-    for(let dd = 0; dd < 5; dd++){
+    for(let dd = 0; dd < 6; dd++){
       const day = new Date(mon); day.setDate(mon.getDate() + dd);
       const ds = fd(day);
       const isT = ds === fd(today);
-      const isH = !isWD(day) && day.getDay() !== 0 && day.getDay() !== 6;
+      const isH = !isWD(day) && day.getDay() !== 0;
       const isP = day < today;
       let tasks = '';
 
@@ -1039,7 +1060,7 @@ function renderCron(){
       daysH += `<div style="padding:8px 0;border-bottom:1px solid var(--vmc-border);background:${isH?'#fff7ed':isT?'#fff8e1':''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:.8rem;font-weight:${isT?700:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
-          ${isH ? '<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO</span>' : ''}
+          ${isH ? '<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO/DESCANSO</span>' : ''}
           ${isT ? '<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>' : ''}
         </div>
         <div>${tasks || '<span style="font-size:.68rem;color:#9ca3af">Sem atividades previstas</span>'}</div>
@@ -1086,7 +1107,7 @@ function cronNav(dir){
 // ═══════════════════════════════════════════════════
 function renderResumo(){
   const mon=getWeekMon(today);
-  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  const fri=new Date(mon); fri.setDate(mon.getDate()+5);
   const wn=getWeekNum(today);
   const ov=overallKPIs();
 
@@ -1154,7 +1175,7 @@ function renderResumo(){
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
   const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
-  const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+4);
+  const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+5);
   lines.push(`📅 *PRÓXIMA SEMANA (S${wn+1}) — ${ptDate(nMon)} a ${ptDate(nFri)}*`);
   TRECHOS.forEach(t=>{
     t.atividades.forEach(at=>{
@@ -1361,7 +1382,14 @@ async function loadDemo(){
     const res = await fetch('/api/sync-excel', { method: 'POST' });
     const data = await res.json();
     if(data.error) throw new Error(data.error);
-    showToast(`✓ ${data.registros_afetados} registros sincronizados do Excel!`);
+    showToast(`✓ ${data.registros_afetados} registros sincronizados! Atualizando painel...`);
+    
+    await loadState();
+    renderDash();
+    renderLancar();
+    renderGantt();
+    renderCron();
+    renderResumo();
   } catch(e) {
     showToast('❌ Erro: ' + e.message);
   }
@@ -1513,7 +1541,7 @@ async function init(){
   di.value=fd(today);
   di.addEventListener('change',renderLancar);
   document.getElementById('hdrDate').textContent=`${DAY_PT[today.getDay()]}, ${ptDate(today)}`;
-  const mon=getWeekMon(today), fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  const mon=getWeekMon(today), fri=new Date(mon); fri.setDate(mon.getDate()+5);
   document.getElementById('hdrWeek').textContent=`Semana ${getWeekNum(today)} · ${ptDate(mon)}–${ptDate(fri)}`;
   renderDash();
   renderLancar();
