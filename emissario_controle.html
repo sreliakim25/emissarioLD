@@ -1018,13 +1018,33 @@ function renderCron(){
         const color = pctW >= 0.9 ? '#166534' : pctW >= 0.7 ? '#9a3412' : isPast ? '#991b1b' : 'var(--vmc-gray)';
         const awFmt = `<strong style="color:${color}">${fmtNum(aw,1)}</strong>`;
         const pwFmt = fmtNum(pw,1);
-        metaLines += `<div style="font-size:.72rem;padding:3px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center">
-          <span style="color:var(--vmc-gray)">T${t.id} · ${at.nome}</span>
-          <span style="white-space:nowrap">
-            <span style="color:var(--vmc-gray-l)">Plan: ${pwFmt}</span>
-            &nbsp;·&nbsp;
-            <span>Real: ${awFmt} ${at.un}</span>
-            ${aw > 0 ? `<span style="font-size:.6rem;margin-left:4px;padding:1px 5px;border-radius:8px;background:${pctW>=0.9?'#dcfce7':pctW>=0.7?'#fef3c7':'#fee2e2'};color:${color}">${(pctW*100).toFixed(0)}%</span>` : ''}
+        
+        // Calcular Produtividade Diária (Média)
+        const wkWd = Math.max(1, countWD(mon, fri));
+        let awDays = wkWd;
+        if (isCurrent) {
+            const hasStartedToday = actualForDay(at.id, fd(today)) > 0;
+            const endD = hasStartedToday ? today : new Date(today.getTime() - 86400000);
+            awDays = Math.max(1, countWD(mon, endD));
+        } else if (!isPast) {
+            awDays = 1;
+        }
+        const avgPlan = pw / wkWd;
+        const avgReal = aw / awDays;
+
+        metaLines += `<div style="font-size:.72rem;padding:5px 0;border-bottom:1px solid #f3f4f6;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px">
+          <span style="color:var(--vmc-gray);min-width:140px;flex:1">T${t.id} · ${at.nome}</span>
+          
+          <span style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;flex:2">
+            <span style="font-size:.65rem;color:var(--vmc-gray);background:var(--vmc-bg);padding:2px 6px;border-radius:4px" title="Produtividade Média Diária (m, m³, un/dia)">
+              Ø Plan: <strong>${fmtNum(avgPlan,1)}</strong> / Real: <strong style="color:${color}">${fmtNum(avgReal,1)}</strong> ${at.un}/dia
+            </span>
+            <span style="white-space:nowrap">
+              <span style="color:var(--vmc-gray-l)">Plan: ${pwFmt}</span>
+              &nbsp;·&nbsp;
+              <span>Real: ${awFmt} ${at.un}</span>
+              ${aw > 0 ? `<span style="font-size:.6rem;margin-left:4px;padding:1px 5px;border-radius:8px;background:${pctW>=0.9?'#dcfce7':pctW>=0.7?'#fef3c7':'#fee2e2'};color:${color}">${(pctW*100).toFixed(0)}%</span>` : ''}
+            </span>
           </span>
         </div>`;
       }
