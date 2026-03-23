@@ -612,7 +612,21 @@ function overallKPIs(){
   const pP = count > 0 ? sumPrevPct / count : 0;
   const idp = pP > 0.001 ? pA / pP : (pA > 0 ? 1.5 : 1.0);
 
-  return {pA, pA_atu, pP, idp, wdLeft};
+  // Média de Assentamento (ATU) - Planejada e Realizada Global
+  const atu_elapsed = Math.max(1, countWD(PROJ_START, yesterday));
+  const atu_avg_real = atu_elapsed > 0 ? atuReal / atu_elapsed : 0;
+  const proj_total_wd = countWD(PROJ_START, DEADLINE);
+  const atu_avg_plan = proj_total_wd > 0 ? atuTot / proj_total_wd : 0;
+
+  let global_proj_end = null;
+  const atu_rem = atuTot - atuReal;
+  if(atu_avg_real > 0 && atu_rem > 0){
+    global_proj_end = addWD(today, Math.ceil(atu_rem / atu_avg_real));
+  } else if(atu_rem <= 0 && atuTot > 0){
+    global_proj_end = new Date(today);
+  }
+
+  return {pA, pA_atu, pP, idp, wdLeft, atu_avg_real, atu_avg_plan, global_proj_end};
 }
 
 
@@ -693,12 +707,16 @@ function renderDash(){
     if(atu){atuTotalAll+=atu.total; atuRealAll+=actualTotal(atu.id);}
   });
   const atuColor = atuRealAll>=atuTotalAll?'g':atuRealAll>0?'o':'r';
+  const isDProj = ov.global_proj_end && ov.global_proj_end > DEADLINE;
+  const pDateStr = ov.global_proj_end ? ptDate(ov.global_proj_end) : '—';
+  const pClrLabel = isDProj ? `color:var(--vmc-red);font-weight:600` : `color:#166534`;
+  
   html+=`<div class="kpi-grid">
-    <div class="kpi"><div class="kpi-lb">Realizado</div><div class="kpi-v ${st}">${fmtPct(ov.pA)}</div><div class="kpi-u">do total geral</div></div>
     <div class="kpi"><div class="kpi-lb">IDP Global</div><div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div><div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div></div>
-    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">metros de tubo</div></div>
-    <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v">${ov.wdLeft}</div><div class="kpi-u">dias úteis até 30/04</div></div>
-    <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
+    <div class="kpi" style="flex:1.2;min-width:180px"><div class="kpi-lb">Média Assentamento</div><div class="kpi-v" style="font-size:1.15rem">${fmtNum(ov.atu_avg_real,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> R / </span>${fmtNum(ov.atu_avg_plan,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> P (m/dia)</span></div><div class="kpi-u" style="${pClrLabel}">Simulação Fim: ${pDateStr}</div></div>
+    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">${fmtPct(ov.pA_atu)} concluído</div></div>
+    <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v ${ov.wdLeft<=0?'bad':'ok'}">${ov.wdLeft}</div><div class="kpi-u">até 30/04</div></div>
+    <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v" style="color:#0369a1">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
   </div>`;
 
   // Trecho cards
