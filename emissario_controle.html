@@ -635,6 +635,7 @@ function overallKPIs(){
 // ═══════════════════════════════════════════════════
 function renderDash(){
   try {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const ov=overallKPIs();
   const st=idpColor(ov.idp);
 
@@ -711,12 +712,73 @@ function renderDash(){
   const pDateStr = ov.global_proj_end ? ptDate(ov.global_proj_end) : '—';
   const pClrLabel = isDProj ? `color:var(--vmc-red);font-weight:600` : `color:#166534`;
   
+  // Montar tabela de resumo por trecho para o tooltip de Assentamento
+  let trechoTableHtml = '';
+  TRECHOS.forEach(t => {
+    const k = trechoKPIs(t);
+    const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
+    if (atu) {
+      const real = actualTotal(atu.id);
+      const plan = plannedToDate(atu, yesterday);
+      const color = real >= plan ? 'var(--green)' : 'var(--vmc-red)';
+      trechoTableHtml += `<tr>
+        <td>${t.nome}</td>
+        <td style="color:${color};font-weight:700">${fmtNum(real,0)}m</td>
+        <td style="color:var(--vmc-gray)">${fmtNum(atu.total,0)}m</td>
+      </tr>`;
+    }
+  });
+
   html+=`<div class="kpi-grid">
-    <div class="kpi"><div class="kpi-lb">IDP Global</div><div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div><div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div></div>
-    <div class="kpi" style="flex:1.2;min-width:180px"><div class="kpi-lb">Média Assentamento</div><div class="kpi-v" style="font-size:1.15rem">${fmtNum(ov.atu_avg_real,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> R / </span>${fmtNum(ov.atu_avg_plan,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> P (m/dia)</span></div><div class="kpi-u" style="${pClrLabel}">Simulação Fim: ${pDateStr}</div></div>
-    <div class="kpi" style="border-bottom-color:var(--vmc-red)"><div class="kpi-lb">Assentamento</div><div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div><div class="kpi-u">${fmtPct(ov.pA_atu)} concluído</div></div>
-    <div class="kpi"><div class="kpi-lb">Dias Restantes</div><div class="kpi-v ${ov.wdLeft<=0?'bad':'ok'}">${ov.wdLeft}</div><div class="kpi-u">até 30/04</div></div>
-    <div class="kpi"><div class="kpi-lb">Semana</div><div class="kpi-v" style="color:#0369a1">S${getWeekNum(today)}</div><div class="kpi-u">de 9 semanas</div></div>
+    <div class="kpi">
+      <div class="kpi-lb">IDP Global</div>
+      <div class="kpi-v ${st}">${fmtNum(ov.idp,2)}</div>
+      <div class="kpi-u">${ov.idp>=1?'Adiantado':idpLabel(ov.idp)}</div>
+      <div class="tooltip-box">
+        <span class="tooltip-title">Índice de Desempenho</span>
+        Mede a eficiência da obra. <br>
+        <strong>> 1.0:</strong> Adiantado <br>
+        <strong>< 1.0:</strong> Atrasado
+      </div>
+    </div>
+
+    <div class="kpi" style="flex:1.2;min-width:180px">
+      <div class="kpi-lb">Média Assentamento</div>
+      <div class="kpi-v" style="font-size:1.15rem">${fmtNum(ov.atu_avg_real,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> R / </span>${fmtNum(ov.atu_avg_plan,1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> P (m/dia)</span></div>
+      <div class="kpi-u" style="${pClrLabel}">Simulação Fim: ${pDateStr}</div>
+      <div class="tooltip-box">
+        <span class="tooltip-title">Como calculamos?</span>
+        Calculado a partir de <strong>09/03/2026</strong>. <br><br>
+        <strong>R (Real):</strong> Total assentado ÷ dias úteis passados.<br>
+        <strong>P (Plano):</strong> Meta total ÷ dias úteis totais.<br><br>
+        <small>💡 Considera sobreposição: a meta diária (P) é a soma das frentes simultâneas.</small>
+      </div>
+    </div>
+
+    <div class="kpi" style="border-bottom-color:var(--vmc-red)">
+      <div class="kpi-lb">Assentamento</div>
+      <div class="kpi-v ${atuColor}" style="font-size:1.15rem">${fmtNum(atuRealAll,0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll,0)} m</span></div>
+      <div class="kpi-u">${fmtPct(ov.pA_atu)} concluído</div>
+      <div class="tooltip-box" style="width:280px">
+        <span class="tooltip-title">Resumo por Trecho (Tubulação)</span>
+        <table class="tooltip-table">
+          <thead><tr><th>Trecho</th><th>Real</th><th>Total</th></tr></thead>
+          <tbody>${trechoTableHtml}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-lb">Dias Restantes</div>
+      <div class="kpi-v ${ov.wdLeft<=0?'bad':'ok'}">${ov.wdLeft}</div>
+      <div class="kpi-u">até 30/04</div>
+    </div>
+    
+    <div class="kpi">
+      <div class="kpi-lb">Semana</div>
+      <div class="kpi-v" style="color:#0369a1">S${getWeekNum(today)}</div>
+      <div class="kpi-u">de 9 semanas</div>
+    </div>
   </div>`;
 
   // Trecho cards
@@ -1643,10 +1705,14 @@ init();
 </button>
 
 <!-- MODAL DE INSIGHT — exibe resultado da IA -->
+<!-- MODAL DE INSIGHT — agora com identidade visual clara (creme/vermelho) -->
 <div id="modal-ia" class="ia-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Análise Inteligente da Obra">
   <div class="ia-modal">
     <div class="ia-header">
-      <span>🤖 Análise Inteligente da Obra</span>
+      <div style="display:flex;align-items:center;gap:10px">
+         <span style="font-size:1.4rem">🤖</span>
+         <span>Análise Inteligente da Obra</span>
+      </div>
       <button onclick="fecharModalIA()" class="ia-close" aria-label="Fechar modal">✕</button>
     </div>
     <div id="ia-conteudo" class="ia-body">
@@ -1656,14 +1722,63 @@ init();
 </div>
 
 <style>
+  /* ── Tooltips de KPI ── */
+  .kpi { position: relative; cursor: help; }
+  .kpi:active .tooltip-box, .kpi:hover .tooltip-box { display: block; }
+  
+  .tooltip-box {
+    display: none;
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #FFFBF2;
+    border: 1px solid var(--vmc-gold);
+    border-radius: 12px;
+    padding: 15px;
+    width: 260px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    text-align: left;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--vmc-dark);
+    pointer-events: none;
+    animation: popIn 0.2s ease-out;
+  }
+  .tooltip-box::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: var(--vmc-gold) transparent transparent transparent;
+  }
+  .tooltip-title {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: var(--vmc-red);
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    display: block;
+    border-bottom: 1px solid #EEE;
+    padding-bottom: 5px;
+  }
+  .tooltip-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .tooltip-table th { font-size: 0.65rem; text-transform: uppercase; color: var(--vmc-gray); text-align: left; padding: 4px; }
+  .tooltip-table td { padding: 4px; border-bottom: 1px solid #F5F0E5; font-size: 0.75rem; }
+  .tooltip-table tr:last-child td { border-bottom: none; }
+
   /* ── Botão flutuante IA ── */
   #btn-ia {
     position: fixed;
-    bottom: 80px;           /* Acima da bottom nav */
+    bottom: 80px;
     right: 20px;
     z-index: 9999;
-    background: var(--vmc-ink);  /* Vermelho escuro #8B1A1A */
-    color: #F0EAD8;              /* Creme */
+    background: var(--vmc-ink);
+    color: #F0EAD8;
     border: none;
     border-radius: 50px;
     padding: 12px 18px;
@@ -1674,90 +1789,99 @@ init();
     align-items: center;
     gap: 8px;
     box-shadow: 0 4px 16px rgba(139,26,26,0.45);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.2s;
     font-family: 'Playfair Display', serif;
   }
   #btn-ia:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 22px rgba(139,26,26,0.55);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(139,26,26,0.55);
   }
-  #btn-ia span { font-size: 0.85rem; letter-spacing: 0.03em; }
 
   /* ── Overlay do modal ── */
   .ia-overlay {
     position: fixed; inset: 0; z-index: 10000;
-    background: rgba(41,37,36,0.75);
+    background: rgba(41,37,36,0.5); /* Mais suave */
     display: flex; align-items: center; justify-content: center;
     padding: 16px;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(5px);
   }
 
-  /* ── Modal principal ── */
+  /* ── Modal principal (Identidade Visual Padrão) ── */
   .ia-modal {
-    background: #1e1b18;
-    border: 1px solid var(--vmc-gold);
-    border-radius: 12px;
-    width: 100%; max-width: 620px;
-    max-height: 80vh;
+    background: var(--vmc-bg); /* Creme #EDEAE3 */
+    border: 2px solid var(--vmc-gold);
+    border-radius: 16px;
+    width: 100%; max-width: 650px;
+    max-height: 85vh;
     display: flex; flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   .ia-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 20px;
-    background: #292524;
-    border-bottom: 1px solid var(--vmc-gold);
-    color: var(--vmc-gold);
+    padding: 20px 24px;
+    background: var(--vmc-red); /* Vermelho Escuro */
+    border-bottom: 3px solid var(--vmc-gold);
+    color: #F8F7F4;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-family: 'Playfair Display', serif;
   }
   .ia-close {
-    background: none; border: none; color: #F0EAD8;
-    font-size: 1.1rem; cursor: pointer; line-height: 1;
-    padding: 4px 8px; border-radius: 4px;
-    transition: background 0.2s;
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    font-size: 1.2rem; cursor: pointer; width: 32px; height: 32px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
   }
-  .ia-close:hover { background: rgba(255,255,255,0.1); }
+  .ia-close:hover { background: rgba(255,255,255,0.3); transform: rotate(90deg); }
+  
   .ia-body {
-    padding: 20px;
+    padding: 25px;
     overflow-y: auto;
-    color: #F0EAD8;
-    font-size: 0.92rem;
-    line-height: 1.7;
+    color: var(--vmc-dark);
+    font-size: 1rem;
+    line-height: 1.8;
     flex: 1;
     font-family: 'Crimson Pro', serif;
+    background: #FFFEFB; /* Fundo papel para leitura */
   }
 
-  /* ── Estados de loading e erro ── */
+  /* ── Markdown no IA Body ── */
+  .ia-body strong { color: var(--vmc-red); font-weight: 700; }
+  .ia-body h1, .ia-body h2, .ia-body h3 { 
+    color: var(--vmc-red); 
+    font-family: 'Playfair Display', serif; 
+    margin-top: 1.5rem; 
+    margin-bottom: 0.8rem;
+    border-left: 4px solid var(--vmc-gold);
+    padding-left: 12px;
+  }
+  .ia-body h3 { font-size: 1.15rem; }
+  .ia-body p { margin-bottom: 1.2rem; }
+  .ia-body ul { margin-bottom: 1.2rem; padding-left: 20px; list-style-type: none; }
+  .ia-body li { position: relative; margin-bottom: 8px; }
+  .ia-body li::before { 
+    content: '•'; color: var(--vmc-gold); font-weight: bold; 
+    position: absolute; left: -15px; 
+  }
+
+  /* ── Estados ── */
   .ia-loading {
     display: flex; flex-direction: column;
-    align-items: center; gap: 14px;
-    padding: 40px 20px; color: var(--vmc-gold);
-    font-size: 0.95rem;
+    align-items: center; gap: 20px;
+    padding: 60px 20px; color: var(--vmc-red);
+    font-weight: 600; font-family: 'Playfair Display', serif;
   }
   .ia-spinner {
-    width: 36px; height: 36px;
-    border: 3px solid #292524;
-    border-top-color: var(--vmc-gold);
+    width: 48px; height: 48px;
+    border: 4px solid #EFEBE3;
+    border-top-color: var(--vmc-red);
     border-radius: 50%;
-    animation: iaSpin 0.8s linear infinite;
+    animation: iaSpin 1s linear infinite;
   }
   @keyframes iaSpin { to { transform: rotate(360deg); } }
-
-  .ia-erro {
-    color: #ff6b6b; text-align: center; padding: 24px;
-    font-size: 0.9rem;
-  }
-
-  /* ── Markdown renderizado ── */
-  .ia-body strong { color: var(--vmc-gold); }
-  .ia-body h3 { color: var(--vmc-gold); font-size: 0.95rem; margin: 14px 0 4px; font-family: 'Playfair Display', serif; }
-  .ia-body ul { padding-left: 18px; }
-  .ia-body li { margin-bottom: 4px; }
-  .ia-body p { margin: 0 0 10px; }
+  .ia-erro { color: #b91c1c; text-align: center; padding: 40px; }
 </style>
 
 <script>
@@ -1855,17 +1979,29 @@ function coletarDadosObra() {
 // ── Renderizador de markdown básico ──
 // Converte **negrito**, ### títulos, listas e parágrafos
 function markdownParaHTML(texto) {
+  if(!texto) return '';
   return texto
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    .replace(/## (.+)/g, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^\* (.+)$/gm, '<li>$1</li>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^\* (.+)/gm, '<li>$1</li>')
+    .replace(/^- (.+)/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
     .replace(/\n{2,}/g, '</p><p>')
-    .replace(/^(?!<[hul])(.+)$/gm, '<p>$1</p>')
+    .replace(/^(?!<[hul])(.+)/gm, '<p>$1</p>')
+    .replace(/<\/ul>\n<ul>/g, '') // Remove quebras entre listas
     .trim();
 }
+
+// Fechar tooltips ao clicar fora (Mobile UX)
+document.addEventListener('touchstart', function(e) {
+  if(!e.target.closest('.kpi')) {
+    document.querySelectorAll('.tooltip-box').forEach(b => b.style.display = 'none');
+    setTimeout(() => {
+      document.querySelectorAll('.tooltip-box').forEach(b => b.style.removeProperty('display'));
+    }, 300);
+  }
+}, {passive: true});
 </script>
 <!-- ═══════════ FIM DO BLOCO IA ═══════════ -->
 
