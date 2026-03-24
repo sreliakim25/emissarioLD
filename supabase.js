@@ -49,7 +49,7 @@ async function parseAndSyncExcel(filePath) {
   
   // Vamos mapear todos os índices de coluna que contém uma data válida
   const mappedDates = {}; // { colIndex: "2026-03-02" }
-  for(let col = 6; col < headerDates.length; col++){
+  for(let col = 7; col < headerDates.length; col++){
     let d = headerDates[col];
     if(d instanceof Date) {
       mappedDates[col] = d.toISOString().split('T')[0];
@@ -68,7 +68,7 @@ async function parseAndSyncExcel(filePath) {
     // Mas na linha do PREVISTO nós temos o nome em column 0
     const atividadeStr = row[0] ? String(row[0]).trim() : "";
     const interdição = row[1] || 1;
-    const planType = row[5] ? String(row[5]).trim() : "";
+    const planType = row[6] ? String(row[6]).trim() : "";
     
     if (planType !== "PREVISTO") continue;
     

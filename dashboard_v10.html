@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Emissário Leão Dourado | Viana &amp; Moura</title>
+<script>
+  /* KILL SERVICE WORKERS */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    });
+  }
+</script>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="logo.png">
@@ -289,7 +299,13 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 
 <!-- RESUMO -->
 <div class="scr" id="scr-resumo">
-  <div class="sec-title">📋 Resumo</div>
+  <div class="sec-title">📋 Resumo Semanal</div>
+  <div class="t-tabs" id="resumoTabs" style="margin-bottom:15px">
+    <button class="t-tab act" onclick="setResumoSel('all')">Visão Geral</button>
+    <button class="t-tab" onclick="setResumoSel(1)">Trecho 1</button>
+    <button class="t-tab" onclick="setResumoSel(2)">Trecho 2</button>
+    <button class="t-tab" onclick="setResumoSel(3)">Trecho 3</button>
+  </div>
   <div id="resumoContent"></div>
 </div>
 
@@ -341,6 +357,9 @@ const DEADLINE = new Date('2026-04-30T00:00:00');
 const PROJ_START = new Date('2026-03-09T00:00:00');
 const GANTT_START = new Date('2026-03-09T00:00:00');
 const GANTT_END   = new Date('2026-04-30T00:00:00');
+const today = new Date(); today.setHours(0,0,0,0);
+const yesterday = new Date(today.getTime() - 86400000).toISOString().split('T')[0];
+const yesterdayDate = new Date(today.getTime() - 86400000); yesterdayDate.setHours(0,0,0,0);
 
 const HOLIDAYS = new Set([
   '2026-03-06','2026-04-02','2026-04-03',
@@ -421,7 +440,18 @@ let TRECHOS = [];
 // ═══════════════════════════════════════════════════
 let actuals = {}; // { 'YYYY-MM-DD': { actId: value } }
 let selT = 1;
-const today = new Date(); today.setHours(0,0,0,0);
+let resumoSel = 'all'; 
+
+
+function setResumoSel(val){
+  resumoSel = val;
+  const tabs = document.querySelectorAll('#resumoTabs .t-tab');
+  const values = ['all', 1, 2, 3];
+  tabs.forEach((t, i) => {
+    t.classList.toggle('act', values[i] === val);
+  });
+  renderResumo();
+}
 
 async function loadState(){
   try {
@@ -517,13 +547,12 @@ function trechoKPIs(t){
   let sumPeso=0, sumRealPct=0, sumPrevistoPct=0;
   
   // Como o cálculo de IDP no dia atual joga a meta lá para cima antes de a produção ser lançada,
-  // usamos 'yesterday' para comparar a saúde estrita do plano.
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
+  // usamos 'yesterdayDate' global para comparar a saúde estrita do plano.
 
   t.atividades.forEach(at=>{
     if(at.total<=0) return;
     const aRealizado = actualTotal(at.id);
-    const aPrevisto  = plannedToDate(at, yesterday);
+    const aPrevisto  = plannedToDate(at, yesterdayDate);
     sumPeso       += at.total;
     sumRealPct    += (aRealizado/at.total) * at.total;   // contribuição ponderada realizado
     sumPrevistoPct+= (aPrevisto /at.total) * at.total;   // contribuição ponderada previsto
@@ -546,7 +575,7 @@ function trechoKPIs(t){
     rem      = atuTotal - atuReal;
 
     // Produtividade média real em m/dia (apenas dias úteis desde o início do trecho)
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterday);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterdayDate);
     avgD = elapsed>0 ? atuReal/elapsed : null;
 
     // Projeção de conclusão no ritmo atual
@@ -558,7 +587,7 @@ function trechoKPIs(t){
     reqD = wdLeftTrecho>0 && rem>0 ? rem/wdLeftTrecho : (rem > 0 ? rem : null);
   } else {
     // Fallback sem ATU: usa ponderado genérico
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterday);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterdayDate);
     avgD = null;
     rem  = sumPeso>0 ? (1-pA)*sumPeso : null;
   }
@@ -566,7 +595,7 @@ function trechoKPIs(t){
   // tp/ta para overallKPIs - usa ATU quando existe (ternário explícito para evitar bug com zero)
   const tp  = atu ? atuTotal : sumPeso;
   const ta  = atu ? atuReal  : sumRealPct;
-  const tpd = atu ? plannedToDate(atu, yesterday) : sumPrevistoPct;
+  const tpd = atu ? plannedToDate(atu, yesterdayDate) : sumPrevistoPct;
   // pA/pP para o card do trecho: % ponderada por atividade (unidade-independente)
   // IDP baseado no ponderado (não no ATU bruto) para representar saúde geral do trecho
   const idpCard = pP > 0.001 ? pA/pP : (pA > 0 ? 1.0 : 1.0);
@@ -605,15 +634,14 @@ function overallKPIs(){
   
   // Para o IDP global, comparamos o realizado médio com o previsto médio
   let sumPrevPct = 0;
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
   TRECHOS.forEach(t=>t.atividades.forEach(at=>{
-    if(at.total>0) sumPrevPct += (plannedToDate(at, yesterday) / at.total);
+    if(at.total>0) sumPrevPct += (plannedToDate(at, yesterdayDate) / at.total);
   }));
   const pP = count > 0 ? sumPrevPct / count : 0;
   const idp = pP > 0.001 ? pA / pP : (pA > 0 ? 1.5 : 1.0);
 
   // Média de Assentamento (ATU) - Planejada e Realizada Global
-  const atu_elapsed = Math.max(1, countWD(PROJ_START, yesterday));
+  const atu_elapsed = Math.max(1, countWD(PROJ_START, yesterdayDate));
   const atu_avg_real = atu_elapsed > 0 ? atuReal / atu_elapsed : 0;
   const proj_total_wd = countWD(PROJ_START, DEADLINE);
   const atu_avg_plan = proj_total_wd > 0 ? atuTot / proj_total_wd : 0;
@@ -635,7 +663,6 @@ function overallKPIs(){
 // ═══════════════════════════════════════════════════
 function renderDash(){
   try {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const ov=overallKPIs();
   const st=idpColor(ov.idp);
 
@@ -719,7 +746,7 @@ function renderDash(){
     const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
     if (atu) {
       const real = actualTotal(atu.id);
-      const plan = plannedToDate(atu, yesterday);
+      const plan = plannedToDate(atu, yesterdayDate);
       const color = real >= plan ? 'var(--green)' : 'var(--vmc-red)';
       trechoTableHtml += `<tr>
         <td>${t.nome}</td>
@@ -1205,6 +1232,38 @@ function cronNav(dir){
 // ═══════════════════════════════════════════════════
 // RENDER: RESUMO SEMANAL
 // ═══════════════════════════════════════════════════
+let lastAiSummary = null;
+let lastAiSummaryDiarios = ""; // Para evitar chamadas repetidas se os dados não mudarem
+
+async function requestAISummary(textos) {
+  const hash = textos.join('|');
+  if (lastAiSummary && lastAiSummaryDiarios === hash) {
+    updateAiSummaryUI(lastAiSummary);
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/summarize-diaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diarios: textos })
+    });
+    const data = await res.json();
+    if (data.summary) {
+      lastAiSummary = data.summary;
+      lastAiSummaryDiarios = hash;
+      updateAiSummaryUI(lastAiSummary);
+    }
+  } catch (e) {
+    updateAiSummaryUI("⚠️ Não foi possível gerar o resumo automático.");
+  }
+}
+
+function updateAiSummaryUI(text) {
+  const el = document.getElementById('aiSummaryBox');
+  if (el) el.innerHTML = `<em>${text}</em>`;
+}
+
 function renderResumo(){
   const mon=getWeekMon(today);
   const fri=new Date(mon); fri.setDate(mon.getDate()+5);
@@ -1212,64 +1271,75 @@ function renderResumo(){
   const ov=overallKPIs();
 
   const lines=[];
-  lines.push(`📊 *RELATÓRIO SEMANAL — EMISSÁRIO*`);
+  const title = resumoSel === 'all' ? 'RESUMO GERAL' : `RESUMO TRECHO ${resumoSel}`;
+  lines.push(`📊 *${title} — EMISSÁRIO*`);
   lines.push(`🗓 Semana ${wn}  |  ${ptDate(mon)} → ${ptDate(fri)}`);
   lines.push(`🏗 Viana & Moura Construções | Sistema de Esgotamento Sanitário`);
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`📈 *PROGRESSO GERAL*`);
-  lines.push(`▸ Realizado: *${fmtPct(ov.pA)}*  |  Previsto: ${fmtPct(ov.pP)}`);
-  lines.push(`▸ IDP Global: *${fmtNum(ov.idp,2)}*  (${ov.idp>=1?'Adiantado':ov.idp>=0.95?'No prazo':ov.idp>=0.80?'Atenção — ajustar ritmo':'🚨 ATRASADO — ação imediata'})`);
-  lines.push(`▸ Prazo limite: *30/04/2026* | Dias úteis restantes: *${ov.wdLeft}*`);
-  lines.push(``);
 
-  TRECHOS.forEach(t=>{
-    const k=trechoKPIs(t);
-    const isBehind = k.pP > 0.01 && k.pA < k.pP - 0.005;
-    const isAtRisk = k.projEnd && k.projEnd > k.trechoDeadline;
+  if(resumoSel === 'all') {
+    lines.push(`📈 *PROGRESSO GERAL DA OBRA*`);
+    lines.push(`▸ Realizado: *${fmtPct(ov.pA)}*  |  Previsto: ${fmtPct(ov.pP)}`);
+    const idpStatus = ov.idp>=1?'Adiantado':ov.idp>=0.95?'No prazo':ov.idp>=0.80?'Atenção':'Atrasado';
+    lines.push(`▸ IDP Global: *${fmtNum(ov.idp,2)}*  (${idpStatus})`);
+    lines.push(`▸ Prazo limite: *30/04/2026* | Dias úteis restantes: *${ov.wdLeft}*`);
+    lines.push(``);
+    lines.push(`🏆 *METAS TOTAIS DA SEMANA*`);
     
-    let ico = '✅';
-    let statusTxt = 'No prazo';
-    
-    if (isAtRisk) {
-      ico = '🚨';
-      statusTxt = 'PRAZO EM RISCO';
-    } else if (isBehind) {
-      ico = '⚠️';
-      statusTxt = 'ATENÇÃO AO RITMO';
-    }
-
-    lines.push(`${ico} *${t.nome.toUpperCase()} — ${statusTxt}*`);
-    lines.push(`   Avanço: *${fmtPct(k.pA)}*  |  Previsto: ${fmtPct(k.pP)}  |  IDP: ${fmtNum(k.idp,2)}`);
-    
-    if(k.projEnd){
-      if(isAtRisk){
-        const d=Math.ceil((k.projEnd-k.trechoDeadline)/86400000);
-        lines.push(`   🚨 Projeção: ${ptDate(k.projEnd)} (${d}d após prazo do trecho!)`);
-        lines.push(`   📌 *Meta necessária: ${fmtNum(k.reqD,1)} ${k.atuUn}/dia*`);
-      } else {
-        lines.push(`   ✓ Projeção: ${ptDate(k.projEnd)} — No prazo do trecho`);
-      }
-    }
-    lines.push(`   — Produção na semana:`);
-    t.atividades.forEach(at=>{
-      const pw=plannedForWeek(at,mon,fri);
-      const aw=actualForWeek(at.id,mon,fri);
-      if(pw>0.05||aw>0){
-        const icon=aw>=pw*0.9?'✓':aw>0?'△':'○';
-        lines.push(`     ${icon} ${at.nome}: ${fmtNum(aw,1)}/${fmtNum(pw,1)} ${at.un}`);
-      }
+    // Consolidar metas de todos os trechos
+    const metas = {};
+    TRECHOS.forEach(t => {
+      t.atividades.forEach(at => {
+        const pw = plannedForWeek(at, mon, fri);
+        const aw = actualForWeek(at.id, mon, fri);
+        if(pw > 0.05 || aw > 0) {
+          if(!metas[at.nome]) metas[at.nome] = { p: 0, a: 0, un: at.un };
+          metas[at.nome].p += pw;
+          metas[at.nome].a += aw;
+        }
+      });
+    });
+    Object.keys(metas).forEach(n => {
+      const m = metas[n];
+      const icon = m.a >= m.p * 0.9 ? '✅' : m.a > 0 ? '⚠️' : '○';
+      lines.push(`  ${icon} *${n}*: ${fmtNum(m.a,1)}/${fmtNum(m.p,1)} ${m.un}`);
     });
     lines.push(``);
-  });
+  } else {
+    const t = TRECHOS.find(tr => tr.id === resumoSel);
+    if(t) {
+      const k=trechoKPIs(t);
+      const isBehind = k.pP > 0.01 && k.pA < k.pP - 0.005;
+      const isAtRisk = k.projEnd && k.projEnd > k.trechoDeadline;
+      let statusTxt = isAtRisk ? '🚨 PRAZO EM RISCO' : isBehind ? '⚠️ ATENÇÃO' : '✅ NO PRAZO';
+
+      lines.push(`📈 *STATUS: ${statusTxt}*`);
+      lines.push(`▸ Avanço: *${fmtPct(k.pA)}*  |  Previsto: ${fmtPct(k.pP)}  |  IDP: ${fmtNum(k.idp,2)}`);
+      if(k.projEnd) lines.push(`▸ Projeção: *${ptDate(k.projEnd)}*`);
+      lines.push(``);
+      lines.push(`🏆 *PRODUÇÃO NA SEMANA:*`);
+      t.atividades.forEach(at=>{
+        const pw=plannedForWeek(at,mon,fri);
+        const aw=actualForWeek(at.id,mon,fri);
+        if(pw>0.05||aw>0){
+          const icon=aw>=pw*0.9?'✓':aw>0?'△':'○';
+          lines.push(`  ${icon} ${at.nome}: ${fmtNum(aw,1)}/${fmtNum(pw,1)} ${at.un}`);
+        }
+      });
+      lines.push(``);
+    }
+  }
 
   // DIÁRIOS DA SEMANA
   const diariosSemana = DIARIOS.filter(d => d.data >= fd(mon) && d.data <= fd(fri) && d.texto.trim() !== "");
   if(diariosSemana.length > 0){
-    lines.push(`📝 *OCORRÊNCIAS DO DIÁRIO*`);
-    diariosSemana.forEach(d => {
-      const dd = new Date(d.data+'T00:00:00');
-      lines.push(`▸ ${dd.getDate()}/${dd.getMonth()+1}: ${d.texto}`);
-    });
+    lines.push(`📝 *RESUMO INTELIGENTE DAS OCORRÊNCIAS*`);
+    if(lastAiSummary) {
+      lines.push(lastAiSummary);
+    } else {
+      lines.push(`✨ _Gerando resumo automático..._`);
+      requestAISummary(diariosSemana.map(d => d.texto));
+    }
     lines.push(``);
   }
 
@@ -1277,25 +1347,32 @@ function renderResumo(){
   const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
   const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+5);
   lines.push(`📅 *PRÓXIMA SEMANA (S${wn+1}) — ${ptDate(nMon)} a ${ptDate(nFri)}*`);
-  TRECHOS.forEach(t=>{
-    t.atividades.forEach(at=>{
-      const np=plannedForWeek(at,nMon,nFri);
-      if(np>0.05) lines.push(`  • T${t.id} · ${at.nome}: ${fmtNum(np,1)} ${at.un}`);
+  
+  const nxMetas = {};
+  TRECHOS.forEach(t => {
+    if(resumoSel !== 'all' && t.id !== resumoSel) return;
+    t.atividades.forEach(at => {
+      const np = plannedForWeek(at, nMon, nFri);
+      if(np > 0.05) {
+        if(!nxMetas[at.nome]) nxMetas[at.nome] = { q: 0, un: at.un };
+        nxMetas[at.nome].q += np;
+      }
     });
   });
+  Object.keys(nxMetas).forEach(n => lines.push(`  • ${n}: ${fmtNum(nxMetas[n].q,1)} ${nxMetas[n].un}`));
+
   lines.push(``);
   lines.push(`_Gerado em ${ptDate(today)} · Viana & Moura Construções_`);
 
   const plain=lines.join('\n');
-
-  // HTML render (styled)
   const styled=plain
     .replace(/\*(.*?)\*/g,'<strong>$1</strong>')
     .replace(/_(.*?)_/g,'<em>$1</em>')
-    .replace(/━/g,'<span style="color:var(--vmc-red)">━</span>');
+    .replace(/━/g,'<span style="color:var(--vmc-red)">━</span>')
+    .replace(/✨ _Gerando resumo automático..._/g, '<span id="aiSummaryBox">✨ <em>Gerando resumo inteligente com IA...</em></span>');
 
   document.getElementById('resumoContent').innerHTML=`
-    <div style="font-size:.72rem;color:var(--vmc-gray);margin-bottom:8px">Prévia do relatório · Pressione copiar para enviar ao grupo</div>
+    <div style="font-size:.72rem;color:var(--vmc-gray);margin-bottom:8px">Visualizando: ${resumoSel==='all'?'Obra Completa':`Trecho ${resumoSel}`}</div>
     <div class="resumo-box">${styled}</div>
     <button class="copy-btn" onclick="copyResumo()">📋 Copiar Resumo para WhatsApp</button>`;
   document.getElementById('resumoContent').dataset.plain=plain;
@@ -2006,6 +2083,7 @@ document.addEventListener('touchstart', function(e) {
 <!-- ═══════════ FIM DO BLOCO IA ═══════════ -->
 
 <script>
+/*
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -2013,6 +2091,7 @@ if('serviceWorker' in navigator){
       .catch(e => console.warn('SW erro:', e));
   });
 }
+*/
 </script>
 </body>
 </html>

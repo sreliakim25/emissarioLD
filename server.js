@@ -4,7 +4,7 @@ const cors = require('cors');
 const { supabase, parseAndSyncExcel } = require('./supabase');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -225,8 +225,59 @@ ${JSON.stringify(dados, null, 2)}
   }
 });
 
+// RESUMO DE DIÁRIOS IA — Gera um parágrafo conciso a partir de relatos do diário
+app.post('/api/summarize-diaries', async (req, res) => {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Chave IA não configurada.' });
+
+  const { diarios } = req.body;
+  if (!diarios || !Array.isArray(diarios) || diarios.length === 0) {
+    return res.status(400).json({ error: 'Nenhum relato enviado para resumo.' });
+  }
+
+  const prompt = `
+Você é um gestor de obras sênior. Resuma os seguintes relatos de diário de obra em um único parágrafo conciso, profissional e otimizado para leitura em WhatsApp. 
+Foque no progresso físico, principais desafios superados e status atual. Não use bullet points, apenas um bloco de texto fluido. Responda em português brasileiro.
+
+RELATOS DOS DIÁRIOS:
+${diarios.join('\n---\n')}
+  `.trim();
+
+  try {
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: 'Você é um assistente especializado em relatórios executivos de engenharia.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.3
+      }),
+    });
+
+    if (!groqRes.ok) throw new Error('Falha na API Groq');
+
+    const groqData = await groqRes.json();
+    const summary = groqData.choices?.[0]?.message?.content ?? 'Não foi possível gerar o resumo.';
+    return res.status(200).json({ summary });
+
+  } catch (error) {
+    console.error('Erro no resumo IA:', error);
+    return res.status(500).json({ error: 'Erro ao gerar resumo dos diários.' });
+  }
+});
+
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'emissario_controle.html'));
+  res.sendFile(path.join(__dirname, 'dashboard_v10.html'));
+});
+app.get('/v-final', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard_v10.html'));
 });
 
 app.listen(port, () => {
