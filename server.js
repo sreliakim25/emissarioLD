@@ -152,6 +152,79 @@ app.post('/api/diario', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════
+// ENDPOINT IA — Proxy seguro para a API do Groq
+// A chave GROQ_API_KEY fica em variável de ambiente,
+// nunca exposta no frontend.
+// ═══════════════════════════════════════════════════
+app.post('/api/analyze', async (req, res) => {
+  // Verifica se a chave da API está configurada
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      error: 'GROQ_API_KEY não configurada. Adicione no .env (local) ou nas Environment Variables do Vercel.'
+    });
+  }
+
+  const { dados } = req.body;
+  if (!dados) {
+    return res.status(400).json({ error: 'Nenhum dado enviado para análise.' });
+  }
+
+  // Monta o prompt com os dados reais da obra
+  const prompt = `
+Você é um assistente especializado em gestão de obras de saneamento e infraestrutura.
+Analise os dados abaixo do controle de obra do Emissário Leão Dourado e forneça:
+
+1. 📊 Situação atual (avanço geral, ritmo vs planejado)
+2. ⚠️ Alertas críticos (trechos atrasados, risco de não cumprimento do prazo)
+3. 🎯 Recomendação de produção diária necessária para fechar no prazo
+4. 💡 Insight principal (um ponto de atenção relevante)
+
+Seja direto, objetivo e use dados concretos da análise. Responda em português.
+
+DADOS DA OBRA:
+${JSON.stringify(dados, null, 2)}
+  `.trim();
+
+  try {
+    // Chamada à API do Groq (Llama 3.3 70B — gratuito)
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um assistente de gestão de obras especializado em análise de progresso e prazos. Responda sempre em português brasileiro, de forma clara e objetiva.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 900,
+        temperature: 0.4, // Menos criativo, mais preciso para análise técnica
+      }),
+    });
+
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error('Erro Groq:', err);
+      return res.status(502).json({ error: 'Erro ao consultar o modelo de IA.' });
+    }
+
+    const groqData = await groqRes.json();
+    const insight = groqData.choices?.[0]?.message?.content ?? 'Sem resposta do modelo.';
+    return res.status(200).json({ insight });
+
+  } catch (error) {
+    console.error('Erro interno na análise IA:', error);
+    return res.status(500).json({ error: 'Erro interno na função de análise.' });
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'emissario_controle.html'));
 });

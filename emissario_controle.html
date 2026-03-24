@@ -1632,8 +1632,244 @@ init();
   </div>
 </div>
 
-<script>
+<!-- ════════════════════════════════════════════════════
+     BLOCO IA — Botão flutuante + Modal de Análise IA
+     ════════════════════════════════════════════════════ -->
 
+<!-- BOTÃO FLUTUANTE — abre a análise IA -->
+<button id="btn-ia" onclick="abrirModalIA()" title="Análise IA da Obra" aria-label="Abrir análise inteligente da obra">
+  🤖
+  <span>Análise IA</span>
+</button>
+
+<!-- MODAL DE INSIGHT — exibe resultado da IA -->
+<div id="modal-ia" class="ia-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Análise Inteligente da Obra">
+  <div class="ia-modal">
+    <div class="ia-header">
+      <span>🤖 Análise Inteligente da Obra</span>
+      <button onclick="fecharModalIA()" class="ia-close" aria-label="Fechar modal">✕</button>
+    </div>
+    <div id="ia-conteudo" class="ia-body">
+      <!-- Preenchido via JavaScript -->
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ── Botão flutuante IA ── */
+  #btn-ia {
+    position: fixed;
+    bottom: 80px;           /* Acima da bottom nav */
+    right: 20px;
+    z-index: 9999;
+    background: var(--vmc-ink);  /* Vermelho escuro #8B1A1A */
+    color: #F0EAD8;              /* Creme */
+    border: none;
+    border-radius: 50px;
+    padding: 12px 18px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(139,26,26,0.45);
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-family: 'Playfair Display', serif;
+  }
+  #btn-ia:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(139,26,26,0.55);
+  }
+  #btn-ia span { font-size: 0.85rem; letter-spacing: 0.03em; }
+
+  /* ── Overlay do modal ── */
+  .ia-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(41,37,36,0.75);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(3px);
+  }
+
+  /* ── Modal principal ── */
+  .ia-modal {
+    background: #1e1b18;
+    border: 1px solid var(--vmc-gold);
+    border-radius: 12px;
+    width: 100%; max-width: 620px;
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .ia-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px;
+    background: #292524;
+    border-bottom: 1px solid var(--vmc-gold);
+    color: var(--vmc-gold);
+    font-weight: 700;
+    font-size: 1rem;
+    font-family: 'Playfair Display', serif;
+  }
+  .ia-close {
+    background: none; border: none; color: #F0EAD8;
+    font-size: 1.1rem; cursor: pointer; line-height: 1;
+    padding: 4px 8px; border-radius: 4px;
+    transition: background 0.2s;
+  }
+  .ia-close:hover { background: rgba(255,255,255,0.1); }
+  .ia-body {
+    padding: 20px;
+    overflow-y: auto;
+    color: #F0EAD8;
+    font-size: 0.92rem;
+    line-height: 1.7;
+    flex: 1;
+    font-family: 'Crimson Pro', serif;
+  }
+
+  /* ── Estados de loading e erro ── */
+  .ia-loading {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 40px 20px; color: var(--vmc-gold);
+    font-size: 0.95rem;
+  }
+  .ia-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid #292524;
+    border-top-color: var(--vmc-gold);
+    border-radius: 50%;
+    animation: iaSpin 0.8s linear infinite;
+  }
+  @keyframes iaSpin { to { transform: rotate(360deg); } }
+
+  .ia-erro {
+    color: #ff6b6b; text-align: center; padding: 24px;
+    font-size: 0.9rem;
+  }
+
+  /* ── Markdown renderizado ── */
+  .ia-body strong { color: var(--vmc-gold); }
+  .ia-body h3 { color: var(--vmc-gold); font-size: 0.95rem; margin: 14px 0 4px; font-family: 'Playfair Display', serif; }
+  .ia-body ul { padding-left: 18px; }
+  .ia-body li { margin-bottom: 4px; }
+  .ia-body p { margin: 0 0 10px; }
+</style>
+
+<script>
+// ═══════════════════════════════════════════════════
+// MODO IA — Análise inteligente dos dados da obra
+// ═══════════════════════════════════════════════════
+
+// Abre o modal e dispara a análise via /api/analyze
+async function abrirModalIA() {
+  document.getElementById('modal-ia').style.display = 'flex';
+  document.getElementById('ia-conteudo').innerHTML = `
+    <div class="ia-loading">
+      <div class="ia-spinner"></div>
+      <span>Analisando dados da obra…</span>
+    </div>`;
+
+  // Coleta dados estruturados do dashboard (variáveis JS, não localStorage)
+  const dados = coletarDadosObra();
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dados }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { insight, error } = await res.json();
+    if (error) throw new Error(error);
+
+    // Renderiza a resposta com formatação markdown básica
+    document.getElementById('ia-conteudo').innerHTML = markdownParaHTML(insight);
+
+  } catch (err) {
+    document.getElementById('ia-conteudo').innerHTML = `
+      <div class="ia-erro">
+        ⚠️ Não foi possível obter a análise.<br>
+        <small>${err.message}</small>
+      </div>`;
+  }
+}
+
+function fecharModalIA() {
+  document.getElementById('modal-ia').style.display = 'none';
+}
+
+// Fecha ao clicar fora do modal
+document.getElementById('modal-ia').addEventListener('click', function(e) {
+  if (e.target === this) fecharModalIA();
+});
+
+// ── Coleta os dados da obra a partir das variáveis do dashboard ──
+// Em vez de usar localStorage (que não tem dados relevantes),
+// montamos um resumo estruturado com TRECHOS, actuals e KPIs.
+function coletarDadosObra() {
+  const ov = typeof overallKPIs === 'function' ? overallKPIs() : {};
+
+  // Resumo por trecho com KPIs detalhados
+  const trechosResumo = TRECHOS.map(t => {
+    const k = typeof trechoKPIs === 'function' ? trechoKPIs(t) : {};
+    return {
+      nome: t.nome,
+      inicio: t.inicio,
+      fim: t.fim,
+      idp: k.idp ? k.idp.toFixed(2) : '—',
+      avancoReal: k.pA ? (k.pA * 100).toFixed(1) + '%' : '—',
+      avancoPrevisto: k.pP ? (k.pP * 100).toFixed(1) + '%' : '—',
+      projecaoConclusao: k.projEnd ? ptDate(k.projEnd) : '—',
+      metaDiariaATU: k.reqD ? k.reqD.toFixed(1) + ' ' + (k.atuUn || 'm') + '/dia' : '—',
+      mediaRealATU: k.avgD ? k.avgD.toFixed(1) + ' ' + (k.atuUn || 'm') + '/dia' : '—',
+      atividades: t.atividades.map(at => ({
+        nome: at.nome,
+        sigla: at.id,
+        unidade: at.un,
+        totalPrevisto: at.total,
+        totalRealizado: actualTotal(at.id),
+      })),
+    };
+  });
+
+  return {
+    dataAnalise: new Date().toLocaleDateString('pt-BR'),
+    prazoFinal: '30/04/2026',
+    diasUteisRestantes: ov.wdLeft,
+    progressoGeralMedio: ov.pA ? (ov.pA * 100).toFixed(1) + '%' : '—',
+    progressoAssentamento: ov.pA_atu ? (ov.pA_atu * 100).toFixed(1) + '%' : '—',
+    idpGlobal: ov.idp ? ov.idp.toFixed(2) : '—',
+    mediaAssentamentoReal: ov.atu_avg_real ? ov.atu_avg_real.toFixed(1) + ' m/dia' : '—',
+    mediaAssentamentoPlanejada: ov.atu_avg_plan ? ov.atu_avg_plan.toFixed(1) + ' m/dia' : '—',
+    simulacaoFim: ov.global_proj_end ? ptDate(ov.global_proj_end) : '—',
+    trechos: trechosResumo,
+  };
+}
+
+// ── Renderizador de markdown básico ──
+// Converte **negrito**, ### títulos, listas e parágrafos
+function markdownParaHTML(texto) {
+  return texto
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/^(?!<[hul])(.+)$/gm, '<p>$1</p>')
+    .trim();
+}
+</script>
+<!-- ═══════════ FIM DO BLOCO IA ═══════════ -->
+
+<script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
