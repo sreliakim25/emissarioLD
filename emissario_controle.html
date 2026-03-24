@@ -323,12 +323,12 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <!-- BOTTOM NAV -->
 <nav class="bnav">
   <button class="bn act" onclick="go('dashboard')"><span class="bn-icon">📊</span>Painel</button>
-  <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
-  <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
   <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
+  <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
   <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>G. Visual</button>
-  <button class="bn" onclick="go('diario')"><span class="bn-icon">📝</span>Diário</button>
   <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
+  <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
+  <button class="bn" onclick="go('diario')"><span class="bn-icon">📝</span>Diário</button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -1557,7 +1557,7 @@ function go(name){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
   document.getElementById('scr-'+name).classList.add('act');
-  const idx=['dashboard','lancar','gantt','cronograma','mapa','diario','resumo'].indexOf(name);
+  const idx=['dashboard','cronograma','gantt','mapa','resumo','lancar','diario'].indexOf(name);
   if(idx>=0) document.querySelectorAll('.bn')[idx].classList.add('act');
   const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,diario:renderDiario,resumo:renderResumo};
   if(renders[name]) renders[name]();
