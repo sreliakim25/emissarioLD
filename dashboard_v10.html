@@ -27,10 +27,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <meta name="description" content="Controle de obra do Emissário Leão Dourado — Viana &amp; Moura Construções">
+<!-- html2pdf.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
 
 <style>
 :root{
@@ -85,6 +87,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 .pb.w{background:var(--vmc-ink)}
 .pb.g{background:var(--green)}
 .pb.o{background:var(--orange)}
+.pb.r{background:var(--vmc-red)}
 .pb.rv{background:var(--vmc-red)}
 .pb.pl{background:#94a3b8}
 
@@ -120,7 +123,8 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 .idp-badge.g{background:#dcfce7;color:#15803d}
 .idp-badge.o{background:#fef3c7;color:#92400e}
 .idp-badge.r{background:#fee2e2;color:#991b1b}
-.pw2{background:var(--vmc-bg);border-radius:100px;height:7px;overflow:hidden;margin:4px 0}
+/* PW2 - Barra de Fundo das Atividades */
+.pw2{background:rgba(0,0,0,0.08);border-radius:100px;height:7px;overflow:hidden;margin:4px 0}
 
 /* LANÇAR */
 .date-sel{display:flex;align-items:center;gap:10px;background:var(--vmc-card);border-radius:var(--rs);padding:12px 15px;margin-bottom:11px;box-shadow:var(--sh);border:1px solid var(--vmc-border)}
@@ -233,6 +237,44 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .hist-body { padding: 18px; font-size: 0.92rem; color: var(--vmc-dark); display: none; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid #f1f5f9; background: #fff; }
   .hist-item.open .hist-body { display: block; }
   .hist-item.open .hist-hdr { background: #fff; border-bottom: 1px solid #f1f5f9; }
+
+  /* --- PDF EXPORT STYLES (NEW TEMPLATE) --- */
+  #pdf-render-area { position: absolute; left: -9999px; top: 0; }
+  .card-wrapper {
+    position: relative;
+    width: 1281px;
+    height: 659px;
+    flex-shrink: 0;
+    font-family: "Barlow Condensed", sans-serif;
+  }
+  .card-wrapper img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1281px;
+    height: 659px;
+    display: block;
+  }
+  .campo {
+    position: absolute;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+  }
+  #pdf-date { top: 77px; left: 435px; width: 248px; font-size: 18px; font-weight: 800; color: #1A1A1A; }
+  #asfalto { top: 527px; left: 15px; width: 90px; font-size: 28px; color: #FFFFFF; }
+  #granito { top: 527px; left: 113px; width: 90px; font-size: 28px; color: #FFFFFF; }
+  #escavacao { top: 545px; left: 222px; width: 188px; font-size: 26px; color: #1A1A1A; }
+  #desmonte { top: 545px; left: 429px; width: 188px; font-size: 26px; color: #1A1A1A; }
+  #tubo { top: 538px; left: 643px; width: 202px; font-size: 26px; color: #1A1A1A; }
+  #pv { top: 538px; left: 857px; width: 202px; font-size: 26px; color: #1A1A1A; }
+  #reaterro { top: 497px; left: 1086px; width: 185px; font-size: 38px; color: #FFFFFF; }
+  #resumo-asfalto { top: 576px; left: 1168px; width: 100px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
+  #resumo-tubo { top: 597px; left: 1168px; width: 100px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
+  #resumo-solo { top: 618px; left: 1151px; width: 117px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
 </style>
 
 </head>
@@ -1172,21 +1214,50 @@ function renderCron(){
         const ad = actualForDay(at.id, ds);
         if(pd > 0.05 || ad > 0){
           const done = ad > 0;
-          const miss = isP && !done && !isH;
-          const pct = pd > 0 ? ad/pd : (ad > 0 ? 1 : 0);
-          const bg = done ? '#dcfce7' : miss ? '#fee2e2' : '#f1f5f9';
-          const col = done ? '#166534' : miss ? '#991b1b' : '#374151';
+          const miss = isP && !done && pd > 0.05 && !isH;
+          
+          // Nova Lógica de Cores:
+          // Verde: Realizado >= Planejado
+          // Amarelo: Realizado < Planejado (mas ad > 0)
+          // Vermelho: Realizado == 0 e Planejado > 0
+          
+          let bg = '#f1f5f9'; // Padrão: Previsto (cinza claro)
+          let col = '#374151'; // Texto escuro
+          let iconStr = '';
+
+          if (ad >= pd && pd > 0.05) {
+            bg = '#dcfce7'; col = '#166534'; // Verde
+            iconStr = `<span style="background:rgba(22,101,52,.15);padding:0 3px;border-radius:3px;font-size:.58rem">✓ ${fmtNum(ad,0)}</span>`;
+          } else if (ad > 0 && ad < pd) {
+            bg = '#fef3c7'; col = '#92400e'; // Amarelo
+            iconStr = `<span style="background:rgba(146,64,14,.1);padding:0 3px;border-radius:3px;font-size:.58rem">⚠ ${fmtNum(ad,0)}</span>`;
+          } else if (ad === 0 && pd > 0.05) {
+            if (isP && !isH) {
+              bg = '#fee2e2'; col = '#991b1b'; // Vermelho (Atrasado)
+              iconStr = `<span style="font-size:.58rem">🚨 0</span>`;
+            } else {
+              bg = '#f1f5f9'; col = '#374151'; // Previsto
+              iconStr = '';
+            }
+          } else if (pd <= 0.05 && ad > 0) {
+            bg = '#dcfce7'; col = '#166534'; // Extraordinário
+            iconStr = `<span style="background:rgba(22,101,52,.15);padding:0 3px;border-radius:3px;font-size:.58rem">★ ${fmtNum(ad,0)}</span>`;
+          }
+
           tasks += `<span style="font-size:.65rem;padding:2px 6px;margin:1px 2px 1px 0;border-radius:4px;background:${bg};color:${col};display:inline-flex;align-items:center;gap:3px">
             <span>T${t.id} ${at.nome.substring(0,10)}…</span>
             <span style="font-weight:600">${fmtNum(pd,0)} ${at.un}</span>
-            ${done ? `<span style="background:rgba(22,101,52,.15);padding:0 3px;border-radius:3px;font-size:.58rem">✓ ${fmtNum(ad,0)}</span>` : miss ? `<span style="font-size:.58rem">⚠ 0</span>` : ''}
+            ${iconStr}
           </span>`;
         }
       }));
 
       daysH += `<div style="padding:8px 0;border-bottom:1px solid var(--vmc-border);background:${isH?'#fff7ed':isT?'#fff8e1':''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:.8rem;font-weight:${isT?700:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.8rem;font-weight:${isT?700:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
+            <button onclick="gerarPDFDia('${ds}')" style="background:none;border:none;cursor:pointer;padding:0;font-size:1.1rem;line-height:1;display:flex;align-items:center" title="Gerar Cartões de Trabalho">📄</button>
+          </div>
           ${isH ? '<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO/DESCANSO</span>' : ''}
           ${isT ? '<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>' : ''}
         </div>
@@ -1215,8 +1286,9 @@ function renderCron(){
 
   // Legenda
   html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.72rem;color:var(--vmc-gray);padding:6px 2px 16px">
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#dcfce7;border-radius:3px;display:inline-block"></span>Realizado</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#fee2e2;border-radius:3px;display:inline-block"></span>Não realizado</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#dcfce7;border-radius:3px;display:inline-block"></span>Concluído</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#fef3c7;border-radius:3px;display:inline-block"></span>Parcial / Atenção</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#fee2e2;border-radius:3px;display:inline-block"></span>Atrasado</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#f1f5f9;border-radius:3px;display:inline-block"></span>Previsto</span>
   </div>`;
 
@@ -1226,6 +1298,111 @@ function renderCron(){
 function cronNav(dir){
   cronWeekOffset += dir;
   renderCron();
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT: CARTÃO DE TRABALHO DIÁRIO (PDF)
+// ═══════════════════════════════════════════════════
+async function gerarPDFDia(dateStr) {
+  const trechosComMetas = [];
+  TRECHOS.forEach(t => {
+    let hasMeta = false;
+    t.atividades.forEach(at => {
+      if(plannedForDay(at, dateStr) > 0.05) hasMeta = true;
+    });
+    if(hasMeta) trechosComMetas.push(t.id);
+  });
+
+  if(trechosComMetas.length === 0) {
+    alert("Não há metas planejadas para este dia.");
+    return;
+  }
+
+  // Se houver mais de um trecho, confirma qual quer gerar ou gera todos
+  for(const tid of trechosComMetas) {
+    await gerarCartaoPDF(dateStr, tid);
+  }
+}
+
+async function gerarCartaoPDF(dateStr, trechoId) {
+  const t = TRECHOS.find(tr => tr.id === trechoId);
+  if(!t) return;
+
+  // Preenche Data
+  const d = new Date(dateStr + 'T12:00:00');
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('pdf-date').innerText = `${d.getDate()} de ${meses[d.getMonth()]}, ${d.getFullYear()}`;
+
+  // Busca metas do dia para este trecho
+  const metas = {
+    ras: 0, rgr: 0, // Remoção
+    esc: 0, roc: 0, // Escavação / Rocha
+    atu: 0, ipv: 0, // Tubo / PV
+    rea: 0          // Reaterro
+  };
+
+  t.atividades.forEach(at => {
+    const val = plannedForDay(at, dateStr);
+    if(val <= 0.05) return;
+    
+    // Mapeamento por ID ou Nome
+    const nid = at.id.toUpperCase();
+    if(nid.includes('RAS')) metas.ras += val;
+    else if(nid.includes('RGR')) metas.rgr += val;
+    else if(nid.includes('ESC')) metas.esc += val;
+    else if(nid.includes('ROC')) metas.roc += val;
+    else if(nid.includes('ATU')) metas.atu += val;
+    else if(nid.includes('IPV')) metas.ipv += val;
+    else if(nid.includes('REA')) metas.rea += val;
+  });
+
+  // Atualiza IDs no template (Novo Design)
+  const f = (n, d = 1) => fmtNum(n, d);
+  document.getElementById('asfalto').innerText = f(metas.ras);
+  document.getElementById('granito').innerText = f(metas.rgr);
+  document.getElementById('escavacao').innerText = f(metas.esc);
+  document.getElementById('desmonte').innerText = f(metas.roc);
+  document.getElementById('tubo').innerText = f(metas.atu);
+  document.getElementById('pv').innerText = f(metas.ipv);
+  document.getElementById('reaterro').innerText = f(metas.rea);
+
+  // Resumo lateral
+  document.getElementById('resumo-asfalto').innerText = `${f(metas.ras + metas.rgr)} m²`;
+  document.getElementById('resumo-tubo').innerText = `${f(metas.atu)} m`;
+  document.getElementById('resumo-solo').innerText = `${f(metas.esc + metas.roc)} m³`;
+
+  // Título do PDF
+  const filename = `Cartao_Trabalho_T${trechoId}_${dateStr}.pdf`;
+
+  // Gera PDF usando html2pdf
+  const element = document.getElementById('pdf-tpl');
+  const opt = {
+    margin: 0,
+    filename: filename,
+    image: { type: 'jpeg', quality: 1.0 },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      letterRendering: true,
+      width: 1281,
+      height: 659
+    },
+    jsPDF: { 
+      unit: 'px', 
+      format: [1281, 659], 
+      hotfixes: ['px_scaling'] 
+    }
+  };
+  
+  // Exibe temporariamente para o html2pdf capturar corretamente
+  const ra = document.getElementById('pdf-render-area');
+  ra.style.left = '0';
+  
+  try {
+    await html2pdf().set(opt).from(element).save();
+  } finally {
+    ra.style.left = '-9999px';
+  }
 }
 
 
@@ -1271,22 +1448,56 @@ function renderResumo(){
   const ov=overallKPIs();
 
   const lines=[];
-  const title = resumoSel === 'all' ? 'RESUMO GERAL' : `RESUMO TRECHO ${resumoSel}`;
-  lines.push(`📊 *${title} — EMISSÁRIO*`);
-  lines.push(`🗓 Semana ${wn}  |  ${ptDate(mon)} → ${ptDate(fri)}`);
-  lines.push(`🏗 Viana & Moura Construções | Sistema de Esgotamento Sanitário`);
-  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
+  const formatDDMM = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  const title = resumoSel === 'all' ? 'Resumo Geral' : `Resumo Trecho ${resumoSel}`;
+  lines.push(`📊 ${title}`);
+  lines.push(``);
+  lines.push(`🗓 Semana ${wn}`);
+  lines.push(`${formatDDMM(mon)} → ${formatDDMM(fri)}`);
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━`);
+  lines.push(``);
+
+  // Calcula ATU (Assentamento) para mostrar o delta
+  let atuReal = 0, atuPrev = 0;
+  if(resumoSel === 'all') {
+    TRECHOS.forEach(t => {
+      const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
+      if(atu) { atuReal += actualTotal(atu.id); atuPrev += plannedToDate(atu, yesterdayDate); }
+    });
+  } else {
+    const t = TRECHOS.find(tr => tr.id === resumoSel);
+    if(t) {
+      const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
+      if(atu) { atuReal = actualTotal(atu.id); atuPrev = plannedToDate(atu, yesterdayDate); }
+    }
+  }
+  
+  const atuDelta = atuReal - atuPrev;
+  let atuEmoji = atuDelta >= 0 ? '🟩' : (atuDelta >= -20 ? '🟨' : '🟥');
+  if(atuDelta === 0) atuEmoji = '🟩';
+  const atuIcon = atuDelta >= 0 ? '🔼' : '🔻';
+  const atuSinal = atuDelta >= 0 ? '➕' : '➖';
+  const atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `🔼 No previsto ${atuEmoji}`;
 
   if(resumoSel === 'all') {
-    lines.push(`📈 *PROGRESSO GERAL DA OBRA*`);
-    lines.push(`▸ Realizado: *${fmtPct(ov.pA)}*  |  Previsto: ${fmtPct(ov.pP)}`);
-    const idpStatus = ov.idp>=1?'Adiantado':ov.idp>=0.95?'No prazo':ov.idp>=0.80?'Atenção':'Atrasado';
-    lines.push(`▸ IDP Global: *${fmtNum(ov.idp,2)}*  (${idpStatus})`);
-    lines.push(`▸ Prazo limite: *30/04/2026* | Dias úteis restantes: *${ov.wdLeft}*`);
+    lines.push(`📈 PROGRESSO GERAL DA OBRA`);
     lines.push(``);
-    lines.push(`🏆 *METAS TOTAIS DA SEMANA*`);
+    lines.push(`▸ Previsto: ${fmtPct(ov.pP)}`);
+    lines.push(`   Realizado: ${fmtPct(ov.pA)}`);
+    lines.push(`   ${atuText}`);
+    lines.push(``);
+    const idpStatus = ov.idp>=1?'no prazo':ov.idp>=0.95?'no prazo':ov.idp>=0.80?'atenção':'atrasado';
+    const idpEmoji = ov.idp>=0.95?'🟩':ov.idp>=0.80?'🟨':'🟥';
+    lines.push(`▸ IDP Global: ${fmtNum(ov.idp,2)} (${idpStatus}) ${idpEmoji}`);
+    lines.push(``);
+    lines.push(`▸ Prazo limite: 30/04/2026`);
+    lines.push(`▸ Prazo Real: ${ov.global_proj_end ? ptDate(ov.global_proj_end) : '—'}`);
+    lines.push(`▸ Dias úteis restantes: ${ov.wdLeft}`);
+    lines.push(``);
+    lines.push(`🏆 METAS TOTAIS DA SEMANA`);
+    lines.push(``);
     
-    // Consolidar metas de todos os trechos
     const metas = {};
     TRECHOS.forEach(t => {
       t.atividades.forEach(at => {
@@ -1302,31 +1513,40 @@ function renderResumo(){
     Object.keys(metas).forEach(n => {
       const m = metas[n];
       const icon = m.a >= m.p * 0.9 ? '✅' : m.a > 0 ? '⚠️' : '○';
-      lines.push(`  ${icon} *${n}*: ${fmtNum(m.a,1)}/${fmtNum(m.p,1)} ${m.un}`);
+      lines.push(`  ${icon} ${n}:`);
+      lines.push(`${fmtNum(m.a,1)} / ${fmtNum(m.p,1)} ${m.un}`);
+      lines.push(``);
     });
-    lines.push(``);
   } else {
     const t = TRECHOS.find(tr => tr.id === resumoSel);
     if(t) {
       const k=trechoKPIs(t);
-      const isBehind = k.pP > 0.01 && k.pA < k.pP - 0.005;
-      const isAtRisk = k.projEnd && k.projEnd > k.trechoDeadline;
-      let statusTxt = isAtRisk ? '🚨 PRAZO EM RISCO' : isBehind ? '⚠️ ATENÇÃO' : '✅ NO PRAZO';
-
-      lines.push(`📈 *STATUS: ${statusTxt}*`);
-      lines.push(`▸ Avanço: *${fmtPct(k.pA)}*  |  Previsto: ${fmtPct(k.pP)}  |  IDP: ${fmtNum(k.idp,2)}`);
-      if(k.projEnd) lines.push(`▸ Projeção: *${ptDate(k.projEnd)}*`);
+      lines.push(`📈 STATUS TRECHO ${t.id}`);
       lines.push(``);
-      lines.push(`🏆 *PRODUÇÃO NA SEMANA:*`);
+      lines.push(`▸ Previsto: ${fmtPct(k.pP)}`);
+      lines.push(`   Realizado: ${fmtPct(k.pA)}`);
+      lines.push(`   ${atuText}`);
+      lines.push(``);
+      const idpStatus = k.idp>=1?'no prazo':k.idp>=0.95?'no prazo':k.idp>=0.80?'atenção':'atrasado';
+      const idpEmoji = k.idp>=0.95?'🟩':k.idp>=0.80?'🟨':'🟥';
+      lines.push(`▸ IDP: ${fmtNum(k.idp,2)} (${idpStatus}) ${idpEmoji}`);
+      lines.push(``);
+      lines.push(`▸ Prazo limite: ${ptDate(k.trechoDeadline)}`);
+      lines.push(`▸ Prazo Real: ${k.projEnd ? ptDate(k.projEnd) : '—'}`);
+      lines.push(`▸ Dias úteis restantes: ${countWD(today, k.trechoDeadline)}`);
+      lines.push(``);
+      lines.push(`🏆 PRODUÇÃO NA SEMANA`);
+      lines.push(``);
       t.atividades.forEach(at=>{
         const pw=plannedForWeek(at,mon,fri);
         const aw=actualForWeek(at.id,mon,fri);
         if(pw>0.05||aw>0){
-          const icon=aw>=pw*0.9?'✓':aw>0?'△':'○';
-          lines.push(`  ${icon} ${at.nome}: ${fmtNum(aw,1)}/${fmtNum(pw,1)} ${at.un}`);
+          const icon=aw>=pw*0.9?'✅':aw>0?'⚠️':'○';
+          lines.push(`  ${icon} ${at.nome}:`);
+          lines.push(`${fmtNum(aw,1)} / ${fmtNum(pw,1)} ${at.un}`);
+          lines.push(``);
         }
       });
-      lines.push(``);
     }
   }
 
@@ -2011,12 +2231,8 @@ document.getElementById('modal-ia').addEventListener('click', function(e) {
 });
 
 // ── Coleta os dados da obra a partir das variáveis do dashboard ──
-// Em vez de usar localStorage (que não tem dados relevantes),
-// montamos um resumo estruturado com TRECHOS, actuals e KPIs.
 function coletarDadosObra() {
   const ov = typeof overallKPIs === 'function' ? overallKPIs() : {};
-
-  // Resumo por trecho com KPIs detalhados
   const trechosResumo = TRECHOS.map(t => {
     const k = typeof trechoKPIs === 'function' ? trechoKPIs(t) : {};
     return {
@@ -2053,8 +2269,6 @@ function coletarDadosObra() {
   };
 }
 
-// ── Renderizador de markdown básico ──
-// Converte **negrito**, ### títulos, listas e parágrafos
 function markdownParaHTML(texto) {
   if(!texto) return '';
   return texto
@@ -2066,11 +2280,10 @@ function markdownParaHTML(texto) {
     .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
     .replace(/\n{2,}/g, '</p><p>')
     .replace(/^(?!<[hul])(.+)/gm, '<p>$1</p>')
-    .replace(/<\/ul>\n<ul>/g, '') // Remove quebras entre listas
+    .replace(/<\/ul>\n<ul>/g, '')
     .trim();
 }
 
-// Fechar tooltips ao clicar fora (Mobile UX)
 document.addEventListener('touchstart', function(e) {
   if(!e.target.closest('.kpi')) {
     document.querySelectorAll('.tooltip-box').forEach(b => b.style.display = 'none');
@@ -2080,19 +2293,37 @@ document.addEventListener('touchstart', function(e) {
   }
 }, {passive: true});
 </script>
-<!-- ═══════════ FIM DO BLOCO IA ═══════════ -->
 
-<script>
-/*
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(r => console.log('SW registrado:', r.scope))
-      .catch(e => console.warn('SW erro:', e));
-  });
-}
-*/
-</script>
+<!-- TEMPLATE PDF (OCULTO) -->
+<div id="pdf-render-area">
+  <div class="card-wrapper" id="pdf-tpl">
+    <!-- IMAGEM BASE -->
+    <img src="c.diario.png">
+
+    <!-- DATA -->
+    <div class="campo" id="pdf-date"></div>
+
+    <!-- PAINEL ESQUERDO — REMOÇÃO -->
+    <div class="campo" id="asfalto">0,0</div>
+    <div class="campo" id="granito">0,0</div>
+
+    <!-- CENTRO-ESQUERDO — ESCAVAÇÃO E SOLO -->
+    <div class="campo" id="escavacao">0,0</div>
+    <div class="campo" id="desmonte">0,0</div>
+
+    <!-- CENTRO-DIREITO — TUBOS E CONEXÕES -->
+    <div class="campo" id="tubo">0,0</div>
+    <div class="campo" id="pv">0,0</div>
+
+    <!-- PAINEL DIREITO — REATERRO -->
+    <div class="campo" id="reaterro">0,0</div>
+
+    <!-- RESUMO DE METAS -->
+    <div class="campo" id="resumo-asfalto">0,0 m²</div>
+    <div class="campo" id="resumo-tubo">0,0 m</div>
+    <div class="campo" id="resumo-solo">0,0 m³</div>
+  </div>
+</div>
 </body>
 </html>
 

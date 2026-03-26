@@ -1,4 +1,4 @@
-const CACHE_NAME = 'emissario-ld-v2';
+const CACHE_NAME = 'emissario-ld-v3';
 const ASSETS = [
   '/',
   '/emissario_controle.html',
