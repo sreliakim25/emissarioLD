@@ -1,6 +1,10 @@
+require('dotenv').config();
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 const { parseAndSyncExcel } = require('./supabase');
 const path = require('path');
-require('dotenv').config();
 
 async function test() {
   console.log("Iniciando teste de sincronização...");

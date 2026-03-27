@@ -1,10 +1,16 @@
+require('dotenv').config();
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { supabase, parseAndSyncExcel } = require('./supabase');
 
 const app = express();
-const port = 3001;
+const port = 8000; // Porta hardcodada conforme solicitado
 
 app.use(cors());
 app.use(express.json());
@@ -94,7 +100,8 @@ app.get('/api/dashboard', async (req, res) => {
 
     res.json({ success: true, actuals: state, trechos: trechos, diarios: diarios || [] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Erro no endpoint /api/dashboard:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 

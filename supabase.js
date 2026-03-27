@@ -1,13 +1,21 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const xlsx = require('xlsx');
+const dns = require('dns');
+
+// Correção para erro getaddrinfo ENOTFOUND no Node.js (preferência por IPv4)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 // Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
+const supabaseKey = (process.env.SUPABASE_ANON_KEY || '').trim();
 
 if(!supabaseUrl || !supabaseKey){
   console.warn("⚠️ AVISO: Variáveis SUPABASE_URL ou SUPABASE_ANON_KEY não encontradas no .env");
+} else {
+  console.log("✅ Conexão Supabase configurada para:", supabaseUrl);
 }
 
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
