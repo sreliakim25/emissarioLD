@@ -582,8 +582,14 @@ function plannedForWeek(at, wMon, wFri){
   while(d<=wFri){tot+=plannedForDay(at,fd(d));d.setDate(d.getDate()+1);}
   return tot;
 }
-function actualTotal(id){
-  return Object.values(actuals).reduce((s,day)=>s+(Number(day[id])||0),0);
+function actualTotal(id, upTo){
+  if (!upTo) return Object.values(actuals).reduce((s,day)=>s+(Number(day[id])||0),0);
+  const upToStr = typeof upTo === 'string' ? upTo : fd(new Date(upTo));
+  let sum = 0;
+  for (const dateStr in actuals) {
+    if (dateStr <= upToStr) sum += (Number(actuals[dateStr][id]) || 0);
+  }
+  return sum;
 }
 function actualForDay(id, dateStr){
   return actuals[dateStr]?Number(actuals[dateStr][id])||0:0;
@@ -613,7 +619,7 @@ function trechoKPIs(t, customDate){
   t.atividades.forEach(at=>{
     if(at.total<=0) return;
     if(shouldExclude(at.id)) return; // Ignora Desmonte de Rocha nos pesos
-    const aRealizado = actualTotal(at.id);
+    const aRealizado = actualTotal(at.id, customDate);
     const aPrevisto  = plannedToDate(at, refDate);
     sumPeso       += at.total;
     sumRealPct    += (aRealizado/at.total) * at.total;
@@ -633,7 +639,7 @@ function trechoKPIs(t, customDate){
   if(atu && atu.total>0){
     atuTotal = atu.total;
     atuUn    = atu.un || 'm';
-    atuReal  = actualTotal(atu.id);
+    atuReal  = actualTotal(atu.id, customDate);
     rem      = atuTotal - atuReal;
 
     // Produtividade média real em m/dia (apenas dias úteis desde o início do trecho)
@@ -675,7 +681,7 @@ function overallKPIs(customDate){
   TRECHOS.forEach(t=>{
     t.atividades.forEach(at=>{
       if(at.total<=0) return;
-      const real = actualTotal(at.id);
+      const real = actualTotal(at.id, customDate);
       const prev = plannedToDate(at, refDate);
       
       // Só entra na média global se não estiver na lista de exclusão
@@ -1366,13 +1372,13 @@ function renderResumo(){
   if(resumoSel === 'all') {
     TRECHOS.forEach(t => {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
-      if(atu) { atuReal += actualTotal(atu.id); atuPrev += plannedToDate(atu, baseDate); }
+      if(atu) { atuReal += actualTotal(atu.id, baseDate); atuPrev += plannedToDate(atu, baseDate); }
     });
   } else {
     const t = TRECHOS.find(tr => tr.id === resumoSel);
     if(t) {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
-      if(atu) { atuReal = actualTotal(atu.id); atuPrev = plannedToDate(atu, baseDate); }
+      if(atu) { atuReal = actualTotal(atu.id, baseDate); atuPrev = plannedToDate(atu, baseDate); }
     }
   }
   
