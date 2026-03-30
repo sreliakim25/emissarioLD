@@ -1452,16 +1452,19 @@ function renderResumo(){
 
   // DIÁRIOS DA SEMANA
   const diariosSemana = DIARIOS.filter(d => d.data >= fd(mon) && d.data <= fd(fri) && d.texto.trim() !== "");
+  lines.push(`📝 *RESUMO INTELIGENTE DAS OCORRÊNCIAS*`);
+  
   if(diariosSemana.length > 0){
-    lines.push(`📝 *RESUMO INTELIGENTE DAS OCORRÊNCIAS*`);
     if(lastAiSummary) {
       lines.push(lastAiSummary);
     } else {
       lines.push(`✨ _Gerando resumo automático..._`);
       requestAISummary(diariosSemana.map(d => d.texto));
     }
-    lines.push(``);
+  } else {
+    lines.push(`_Nenhum diário registrado nesta semana até o momento._`);
   }
+  lines.push(``);
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
   const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
