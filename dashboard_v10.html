@@ -351,6 +351,11 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <!-- RESUMO -->
 <div class="scr" id="scr-resumo">
   <div class="sec-title">📋 Resumo Semanal</div>
+  <div class="date-sel">
+    <span>📅</span>
+    <input type="date" id="resumoDate" class="di" onchange="renderResumo()">
+    <span style="font-size:.78rem;color:var(--vmc-gray)" id="resumoDayName"></span>
+  </div>
   <div class="t-tabs" id="resumoTabs" style="margin-bottom:15px">
     <button class="t-tab act" onclick="setResumoSel('all')">Visão Geral</button>
     <button class="t-tab" onclick="setResumoSel(1)">Trecho 1</button>
@@ -596,7 +601,8 @@ function idpLabel(v){ return v>=0.95?'✓ No Prazo':v>=0.80?'⚠ Atenção':'�
 const EXCLUDE_METRICS_IDS = ['ROC'];
 function shouldExclude(id){ return EXCLUDE_METRICS_IDS.some(ex => id.toUpperCase().includes(ex)); }
 
-function trechoKPIs(t){
+function trechoKPIs(t, customDate){
+  const refDate = customDate || yesterdayDate;
   // ── 1. Progresso ponderado (% de cada atividade × peso no total volumétrico) ──
   // Usa apenas atividades homogêneas dentro do mesmo trecho para % geral
   let sumPeso=0, sumRealPct=0, sumPrevistoPct=0;
@@ -608,7 +614,7 @@ function trechoKPIs(t){
     if(at.total<=0) return;
     if(shouldExclude(at.id)) return; // Ignora Desmonte de Rocha nos pesos
     const aRealizado = actualTotal(at.id);
-    const aPrevisto  = plannedToDate(at, yesterdayDate);
+    const aPrevisto  = plannedToDate(at, refDate);
     sumPeso       += at.total;
     sumRealPct    += (aRealizado/at.total) * at.total;
     sumPrevistoPct+= (aPrevisto /at.total) * at.total;
@@ -631,7 +637,7 @@ function trechoKPIs(t){
     rem      = atuTotal - atuReal;
 
     // Produtividade média real em m/dia (apenas dias úteis desde o início do trecho)
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterdayDate);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), refDate);
     avgD = elapsed>0 ? atuReal/elapsed : null;
 
     // Projeção de conclusão no ritmo atual
@@ -643,7 +649,7 @@ function trechoKPIs(t){
     reqD = wdLeftTrecho>0 && rem>0 ? rem/wdLeftTrecho : (rem > 0 ? rem : null);
   } else {
     // Fallback sem ATU: usa ponderado genérico
-    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), yesterdayDate);
+    const elapsed = countWD(new Date(t.inicio+'T00:00:00'), refDate);
     avgD = null;
     rem  = sumPeso>0 ? (1-pA)*sumPeso : null;
   }
@@ -651,7 +657,7 @@ function trechoKPIs(t){
   // tp/ta para overallKPIs - usa ATU quando existe (ternário explícito para evitar bug com zero)
   const tp  = atu ? atuTotal : sumPeso;
   const ta  = atu ? atuReal  : sumRealPct;
-  const tpd = atu ? plannedToDate(atu, yesterdayDate) : sumPrevistoPct;
+  const tpd = atu ? plannedToDate(atu, refDate) : sumPrevistoPct;
   // pA/pP para o card do trecho: % ponderada por atividade (unidade-independente)
   // IDP baseado no ponderado (não no ATU bruto) para representar saúde geral do trecho
   const idpCard = pP > 0.001 ? pA/pP : (pA > 0 ? 1.0 : 1.0);
@@ -661,7 +667,8 @@ function trechoKPIs(t){
           wdLeft, atuTotal, atuReal, atuUn, trechoDeadline};
 }
 
-function overallKPIs(){
+function overallKPIs(customDate){
+  const refDate = customDate || yesterdayDate;
   let sumRealVol = 0, sumPrevVol = 0, sumTotalVol = 0;
   let atuReal = 0, atuTot = 0;
 
@@ -669,7 +676,7 @@ function overallKPIs(){
     t.atividades.forEach(at=>{
       if(at.total<=0) return;
       const real = actualTotal(at.id);
-      const prev = plannedToDate(at, yesterdayDate);
+      const prev = plannedToDate(at, refDate);
       
       // Só entra na média global se não estiver na lista de exclusão
       if(!shouldExclude(at.id)){
@@ -691,7 +698,7 @@ function overallKPIs(){
   const idp = pP > 0.001 ? pA / pP : (pA > 0 ? 1.5 : 1.0);
 
   const wdLeft = countWD(today, DEADLINE);
-  const atu_elapsed = Math.max(1, countWD(PROJ_START, yesterdayDate));
+  const atu_elapsed = Math.max(1, countWD(PROJ_START, refDate));
   const atu_avg_real = atu_elapsed > 0 ? atuReal / atu_elapsed : 0;
   
   let planEndDate = PROJ_START;
@@ -1325,10 +1332,23 @@ function updateAiSummaryUI(text) {
 }
 
 function renderResumo(){
-  const mon=getWeekMon(today);
+  const inputEl = document.getElementById('resumoDate');
+  let baseDate = new Date(today);
+  
+  if (inputEl && inputEl.value) {
+    baseDate = new Date(inputEl.value + 'T00:00:00');
+    const dayNameEl = document.getElementById('resumoDayName');
+    if (dayNameEl) dayNameEl.textContent = DAY_PT[baseDate.getDay()];
+  } else if (inputEl) {
+    inputEl.value = fd(today);
+    const dayNameEl = document.getElementById('resumoDayName');
+    if (dayNameEl) dayNameEl.textContent = DAY_PT[today.getDay()];
+  }
+
+  const mon=getWeekMon(baseDate);
   const fri=new Date(mon); fri.setDate(mon.getDate()+5);
-  const wn=getWeekNum(today);
-  const ov=overallKPIs();
+  const wn=getWeekNum(baseDate);
+  const ov=overallKPIs(baseDate);
 
   const lines=[];
   const formatDDMM = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -1346,13 +1366,13 @@ function renderResumo(){
   if(resumoSel === 'all') {
     TRECHOS.forEach(t => {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
-      if(atu) { atuReal += actualTotal(atu.id); atuPrev += plannedToDate(atu, yesterdayDate); }
+      if(atu) { atuReal += actualTotal(atu.id); atuPrev += plannedToDate(atu, baseDate); }
     });
   } else {
     const t = TRECHOS.find(tr => tr.id === resumoSel);
     if(t) {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
-      if(atu) { atuReal = actualTotal(atu.id); atuPrev = plannedToDate(atu, yesterdayDate); }
+      if(atu) { atuReal = actualTotal(atu.id); atuPrev = plannedToDate(atu, baseDate); }
     }
   }
   
@@ -1402,7 +1422,7 @@ function renderResumo(){
   } else {
     const t = TRECHOS.find(tr => tr.id === resumoSel);
     if(t) {
-      const k=trechoKPIs(t);
+      const k=trechoKPIs(t, baseDate);
       lines.push(`📈 STATUS TRECHO ${t.id}`);
       lines.push(``);
       lines.push(`▸ Previsto: ${fmtPct(k.pP)}`);
