@@ -1369,10 +1369,23 @@ function renderResumo(){
 
   // Calcula ATU (Assentamento) para mostrar o delta
   let atuReal = 0, atuPrev = 0;
+  let atuLines = []; // Detalhamento por trecho
   if(resumoSel === 'all') {
     TRECHOS.forEach(t => {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
-      if(atu) { atuReal += actualTotal(atu.id, baseDate); atuPrev += plannedToDate(atu, baseDate); }
+      if(atu) { 
+        const r = actualTotal(atu.id, baseDate);
+        const p = plannedToDate(atu, baseDate);
+        atuReal += r; atuPrev += p;
+        const d = r - p;
+        if (p > 0 || r > 0) {
+          const em = d >= 0 ? '🟩' : (d >= -20 ? '🟨' : '🟥');
+          const ic = d >= 0 ? '🔼' : '🔻';
+          const si = d >= 0 ? '➕' : '➖';
+          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ No previsto 🟩`;
+          atuLines.push(`     ↳ T${t.id}: ${dt}`);
+        }
+      }
     });
   } else {
     const t = TRECHOS.find(tr => tr.id === resumoSel);
@@ -1387,7 +1400,12 @@ function renderResumo(){
   if(atuDelta === 0) atuEmoji = '🟩';
   const atuIcon = atuDelta >= 0 ? '🔼' : '🔻';
   const atuSinal = atuDelta >= 0 ? '➕' : '➖';
-  const atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `🔼 No previsto ${atuEmoji}`;
+  let atuText = '';
+  if (resumoSel === 'all') {
+    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento (Total) ${atuEmoji}` : `✔️ No previsto (Total) ${atuEmoji}`;
+  } else {
+    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `✔️ No previsto ${atuEmoji}`;
+  }
 
   if(resumoSel === 'all') {
     lines.push(`📈 PROGRESSO GERAL DA OBRA`);
@@ -1395,6 +1413,9 @@ function renderResumo(){
     lines.push(`▸ Previsto: ${fmtPct(ov.pP)}`);
     lines.push(`   Realizado: ${fmtPct(ov.pA)}`);
     lines.push(`   ${atuText}`);
+    if (atuLines.length > 0) {
+      atuLines.forEach(l => lines.push(l));
+    }
     lines.push(``);
     const idpStatus = ov.idp>=1?'no prazo':ov.idp>=0.95?'no prazo':ov.idp>=0.80?'atenção':'atrasado';
     const idpEmoji = ov.idp>=0.95?'🟩':ov.idp>=0.80?'🟨':'🟥';
