@@ -1472,25 +1472,7 @@ function renderResumo(){
   }
   lines.push(``);
 
-  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━`);
-  const nMon=new Date(mon); nMon.setDate(mon.getDate()+7);
-  const nFri=new Date(nMon); nFri.setDate(nMon.getDate()+5);
-  lines.push(`📅 *PRÓXIMA SEMANA (S${wn+1}) — ${ptDate(nMon)} a ${ptDate(nFri)}*`);
-  
-  const nxMetas = {};
-  TRECHOS.forEach(t => {
-    if(resumoSel !== 'all' && t.id !== resumoSel) return;
-    t.atividades.forEach(at => {
-      const np = plannedForWeek(at, nMon, nFri);
-      if(np > 0.05) {
-        if(!nxMetas[at.nome]) nxMetas[at.nome] = { q: 0, un: at.un };
-        nxMetas[at.nome].q += np;
-      }
-    });
-  });
-  Object.keys(nxMetas).forEach(n => lines.push(`  • ${n}: ${fmtNum(nxMetas[n].q,1)} ${nxMetas[n].un}`));
 
-  lines.push(``);
   lines.push(`_Gerado em ${ptDate(today)} · Viana & Moura Construções_`);
 
   const plain=lines.join('\n');
