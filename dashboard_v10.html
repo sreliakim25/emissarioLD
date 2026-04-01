@@ -283,7 +283,92 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .kpi-side:first-child { border-right: 1px solid var(--vmc-bg); }
   .kpi-side .kpi-v { font-size: 1.8rem; line-height: 1; margin-bottom: 2px; }
   .kpi-side .kpi-u { font-size: 0.62rem; color: var(--vmc-gray); }
-  .kpi-side .kpi-tag { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--vmc-gray-l); margin-bottom: 4px; }
+  /* TOOLTIPS */
+  .kpi, .kpi-side { position: relative; }
+  .tooltip-box {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #F0EAD8;
+    color: #8B1A1A;
+    padding: 14px;
+    border-radius: var(--rs);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    white-space: normal;
+    min-width: 250px;
+    z-index: 500;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    box-shadow: var(--sh-lg);
+    pointer-events: none;
+    text-align: left;
+    border: 2px solid #E8A020;
+    font-family: 'Crimson Pro', Georgia, serif;
+  }
+  .tooltip-box::after, .tooltip-box::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+  }
+  .tooltip-box::before {
+    border-top-color: #E8A020;
+    margin-top: 2px;
+  }
+  .tooltip-box::after {
+    border-top-color: #F0EAD8;
+  }
+  .kpi:hover .tooltip-box, .kpi-side:hover .tooltip-box {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  .tooltip-title {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #8B1A1A;
+    margin-bottom: 6px;
+    border-bottom: 2px dashed #E8A020;
+    padding-bottom: 5px;
+  }
+  .tooltip-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 5px;
+  }
+  .tooltip-table th {
+    text-align: left;
+    font-weight: 700;
+    color: #8B1A1A;
+    opacity: 0.8;
+    font-size: 0.72rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(139, 26, 26, 0.2);
+  }
+  .tooltip-table td {
+    padding: 6px 0;
+    font-size: 0.85rem;
+    color: #8B1A1A;
+    border-bottom: 1px dashed rgba(139, 26, 26, 0.1);
+  }
+  .tooltip-table tr:last-child td { border: none; }
+
+  /* MINI CALENDÁRIO */
+  .mini-cal-grid-wrap { margin-top: 10px; border: 1px solid var(--vmc-border); border-radius: 8px; overflow: hidden; background: #fff; box-shadow: var(--sh); }
+  .mini-cal-month { background: var(--vmc-bg); font-weight: 700; font-size: 0.75rem; text-align: center; padding: 6px 0; border-bottom: 1px solid var(--vmc-border); color: var(--vmc-ink); text-transform: uppercase; font-family: 'Playfair Display', serif; }
+  .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--vmc-border); }
+  .mini-cal-dow { background: #fafaf8; text-align: center; font-size: 0.65rem; font-weight: 700; padding: 4px 0; color: var(--vmc-gray); }
+  .mini-cal-day { background: #fff; text-align: center; font-size: 0.75rem; padding: 5px 0; color: #cbd5e1; }
+  .mini-cal-day.wd { color: var(--vmc-dark); }
+  .mini-cal-day.sel { background: rgba(232, 160, 32, 0.2); font-weight: 700; color: #92400e; }
+  .mini-cal-day.today { background: var(--vmc-ink); color: #fff; font-weight: 700; position: relative; z-index: 2; box-shadow: 0 0 0 2px var(--vmc-ink) inset; }
 </style>
 
 </head>
@@ -836,7 +921,7 @@ function renderDash(){
         const plan = plannedToDate(atu, yesterdayDate);
         atuTotalAll += atu.total; atuRealAll += real;
         const color = real >= plan ? 'var(--green)' : 'var(--vmc-red)';
-        trechoTableHtml += `<tr><td>${t.nome}</td><td style="color:${color};font-weight:700">${fmtNum(real, 0)}m</td><td style="color:var(--vmc-gray)">${fmtNum(atu.total, 0)}m</td></tr>`;
+        trechoTableHtml += `<tr><td>${t.nome}</td><td style="color:${color};font-weight:700">${fmtNum(real, 0)}m</td><td style="color:#8B1A1A;opacity:0.8">${fmtNum(plan, 0)}m</td></tr>`;
       }
     });
 
@@ -848,9 +933,14 @@ function renderDash(){
         <div class="kpi-lb">IDP Global</div>
         <div class="kpi-v ${st}">${fmtNum(ov.idp, 2)}</div>
         <div class="kpi-u">${ov.idp >= 1 ? 'Adiantado' : idpLabel(ov.idp)}</div>
-        <div class="tooltip-box">
-          <span class="tooltip-title">Índice de Desempenho</span>
-          Mede a eficiência da obra. Valores acima de 1.0 indicam que a obra está adiantada em relação ao plano.
+        <div class="tooltip-box" style="width:260px">
+          <span class="tooltip-title">Índice de Desempenho (IDP)</span>
+          O IDP mede a eficiência da obra dividindo o <strong>Físico Real</strong> pelo <strong>Físico Planejado</strong>.
+          <ul style="margin-top: 8px; padding-left: 20px; font-size: 0.8rem">
+            <li><strong>IDP &gt; 1:</strong> Adiantado</li>
+            <li><strong>IDP = 1:</strong> No prazo</li>
+            <li><strong>IDP &lt; 1:</strong> Atrasado</li>
+          </ul>
         </div>
       </div>
       <div class="kpi" style="flex:1.2;min-width:180px">
@@ -864,7 +954,7 @@ function renderDash(){
         <div class="kpi-u">${fmtPct(ov.pA_atu)} concluído</div>
         <div class="tooltip-box" style="width:280px">
           <span class="tooltip-title">Resumo por Trecho (Tubulação)</span>
-          <table class="tooltip-table"><thead><tr><th>Trecho</th><th>Real</th><th>Total</th></tr></thead><tbody>${trechoTableHtml}</tbody></table>
+          <table class="tooltip-table"><thead><tr><th>Trecho</th><th>Real</th><th>Plan.</th></tr></thead><tbody>${trechoTableHtml}</tbody></table>
         </div>
       </div>
       <div class="kpi dual">
