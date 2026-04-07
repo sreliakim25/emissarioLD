@@ -2,7 +2,7 @@ const xlsx = require('xlsx');
 const path = require('path');
 
 async function testIndices() {
-  const filePath = path.join(__dirname, 'Planejamento Previsto.xlsx');
+  const filePath = path.join(__dirname, 'Planejamento Previsto Geral.xlsx');
   const workbook = xlsx.readFile(filePath, { cellDates: true });
   const data = xlsx.utils.sheet_to_json(workbook.Sheets['Plan'], { header: 1 });
   

@@ -7,7 +7,7 @@ if (dns.setDefaultResultOrder) {
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const { supabase, parseAndSyncExcel } = require('./supabase');
+const { supabase, parseAndSyncExcel, syncRealizadoToExcel, parseAndSyncHHExcel } = require('./supabase');
 
 const app = express();
 const port = 8000; // Porta hardcodada conforme solicitado
@@ -19,11 +19,48 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname)); // Fallback para a raiz se necessário
 
-// Endpoint para ler e processar a planilha
+// Endpoint para ler e processar a planilha (Excel -> Supabase)
 app.post('/api/sync-excel', async (req, res) => {
   try {
-    const recordsParsed = await parseAndSyncExcel(path.join(__dirname, 'Planejamento Previsto.xlsx'));
+    const recordsParsed = await parseAndSyncExcel(path.join(__dirname, 'Planejamento Previsto Geral.xlsx'));
     res.json({ message: "Sincronização concluída", registros_afetados: recordsParsed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint para atualizar o Excel com o Realizado (Supabase -> Excel)
+app.post('/api/sync-to-excel', async (req, res) => {
+  try {
+    const cellsUpdated = await syncRealizadoToExcel(path.join(__dirname, 'Planejamento Previsto Geral.xlsx'));
+    res.json({ message: "Sincronização concluída", celulas_afetadas: cellsUpdated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Endpoint para ler e processar a planilha H-H (Excel -> Supabase)
+app.post('/api/sync-hh', async (req, res) => {
+  try {
+    const recordsParsed = await parseAndSyncHHExcel(path.join(__dirname, 'Planejamento Previsto Geral H-H.xlsx'));
+    res.json({ message: "Sincronização H-H concluída", registros_afetados: recordsParsed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint para buscar dados H-H filtrados por data
+app.get('/api/hh-data', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: "Supabase não configurado" });
+  const { data } = req.query; // YYYY-MM-DD
+  
+  try {
+    let query = supabase.from('equipes_hh').select('*');
+    if (data) query = query.eq('data', data);
+    
+    const { data: rows, error } = await query.order('trecho_id').order('atividade');
+    if (error) throw error;
+    
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

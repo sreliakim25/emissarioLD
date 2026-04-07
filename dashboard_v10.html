@@ -369,6 +369,20 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .mini-cal-day.wd { color: var(--vmc-dark); }
   .mini-cal-day.sel { background: rgba(232, 160, 32, 0.2); font-weight: 700; color: #92400e; }
   .mini-cal-day.today { background: var(--vmc-ink); color: #fff; font-weight: 700; position: relative; z-index: 2; box-shadow: 0 0 0 2px var(--vmc-ink) inset; }
+
+  /* HEATMAP H-H */
+  .hh-grid-wrap { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: var(--sh); margin-top: 10px; border: 1px solid var(--vmc-border); }
+  .hh-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 850px; table-layout: fixed; }
+  .hh-table th, .hh-table td { border: 1px solid #f1eeeb; padding: 10px 4px; text-align: center; }
+  .hh-table th { background: var(--vmc-ink); color: #fff; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 0.65rem; }
+  .hh-table .act-col { text-align: left; padding-left: 12px; font-weight: 700; color: var(--vmc-ink); width: 220px; position: sticky; left: 0; background: #fff; z-index: 5; border-right: 2px solid var(--vmc-bg); white-space: normal; line-height: 1.2; }
+  .hh-cell { width: 40px; transition: all 0.2s; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 0.85rem; }
+  .hh-cell.val-0 { background: #fafaf8; color: rgba(0,0,0,0.05); font-weight: 400; }
+  .hh-cell.val-low { background: #fffbeb; color: #92400e; }
+  .hh-cell.val-mid { background: #fef3c7; color: #92400e; box-shadow: inset 0 0 0 1px rgba(232, 160, 32, 0.2); }
+  .hh-cell.val-high { background: #fee2e2; color: #991b1b; box-shadow: inset 0 0 0 1px rgba(139, 26, 26, 0.2); }
+  .hh-total-row { background: var(--vmc-bg); font-weight: 800; color: var(--vmc-ink); font-family: 'Playfair Display', serif; }
+  .hh-total-row td { border-top: 2px solid var(--vmc-ink); }
 </style>
 
 </head>
@@ -393,8 +407,26 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 
 <!-- DASHBOARD -->
 <div class="scr act" id="scr-dashboard">
-  <button class="demo-btn" onclick="loadDemo()">🎯 Sincronizar Base com Excel</button>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin: 0 0 15px 0;">
+    <button class="demo-btn" style="margin:0" onclick="loadDemo()" title="Lê o planejamento do Excel e atualiza o Dashboard">📊 Sincronizar Diário (Excel)</button>
+    <button class="demo-btn" style="margin:0; background:var(--vmc-bg2); color:var(--vmc-ink); border-color:var(--vmc-ink)" onclick="syncToExcel()" title="Pega o realizado do sistema e escreve de volta no Excel">📥 Exportar Realizado</button>
+    <button class="demo-btn" style="margin:0; background:var(--vmc-gold); color:var(--vmc-ink); border-color:var(--vmc-gold)" onclick="syncHH()" title="Sincroniza o cronograma Hora-a-Hora de pessoal">👥 Sincronizar Equipes (H-H)</button>
+  </div>
   <div id="dashContent"></div>
+</div>
+
+<!-- EQUIPES H-H -->
+<div class="scr" id="scr-hh">
+  <div class="sec-title">👥 Distribuição de Equipes (H-H)</div>
+  <div class="date-sel">
+    <span>📅</span>
+    <input type="date" id="hhDate" class="di" onchange="renderHH()">
+    <span style="font-size:.78rem;color:var(--vmc-gray)" id="hhDayName"></span>
+  </div>
+  <div id="hhContent"></div>
+  <div style="margin-top:15px; font-size:0.7rem; color:var(--vmc-gray); line-height:1.4">
+    💡 <strong>Dica:</strong> Esta visão mostra a quantidade de pessoal alocado em cada serviço por hora. Use para coordenar a logística de campo e frentes de trabalho.
+  </div>
 </div>
 
 <!-- LANÇAR -->
@@ -480,9 +512,10 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
 <!-- BOTTOM NAV -->
 <nav class="bnav">
   <button class="bn act" onclick="go('dashboard')"><span class="bn-icon">📊</span>Painel</button>
-  <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Cronograma</button>
+  <button class="bn" onclick="go('hh')"><span class="bn-icon">👥</span>Equipes</button>
+  <button class="bn" onclick="go('cronograma')"><span class="bn-icon">📅</span>Crono</button>
   <button class="bn" onclick="go('gantt')"><span class="bn-icon">📈</span>Gantt</button>
-  <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>G. Visual</button>
+  <button class="bn" onclick="go('mapa')"><span class="bn-icon">📍</span>Mapa</button>
   <button class="bn" onclick="go('resumo')"><span class="bn-icon">📋</span>Resumo</button>
   <button class="bn" onclick="go('lancar')"><span class="bn-icon">✏️</span>Lançar</button>
   <button class="bn" onclick="go('diario')"><span class="bn-icon">📝</span>Diário</button>
@@ -1865,7 +1898,8 @@ function goTrecho(id){
 // ═══════════════════════════════════════════════════
 async function loadDemo(){
   const btn = document.querySelector('.demo-btn');
-  btn.textContent = '⏳ Sincronizando com Excel...';
+  const originalText = btn.innerHTML;
+  btn.textContent = '⏳ Sincronizando...';
   
   try {
     const res = await fetch('/api/sync-excel', { method: 'POST' });
@@ -1883,7 +1917,25 @@ async function loadDemo(){
     showToast('❌ Erro: ' + e.message);
   }
   
-  btn.innerHTML = '🎯 Sincronizar Base com Excel';
+  btn.innerHTML = originalText;
+}
+
+async function syncToExcel(){
+  const btns = document.querySelectorAll('.demo-btn');
+  const btn = btns[1]; // Segundo botão
+  const originalText = btn.innerHTML;
+  btn.textContent = '⏳ Gravando no Excel...';
+  
+  try {
+    const res = await fetch('/api/sync-to-excel', { method: 'POST' });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    showToast(`✅ Excel atualizado com sucesso! (${data.celulas_afetadas} células alteradas)`);
+  } catch(e) {
+    showToast('❌ Erro na gravação: ' + e.message);
+  }
+  
+  btn.innerHTML = originalText;
 }
 
 async function renderDiario(){
@@ -1999,18 +2051,120 @@ function syncDiarioDate(val){
 let DIARIOS = [];
 
 // ═══════════════════════════════════════════════════
+// H-H VISUALIZATION
+// ═══════════════════════════════════════════════════
+async function syncHH(){
+  showToast("⏳ Sincronizando Planejamento H-H...");
+  try {
+    const res = await fetch('/api/sync-hh', { method: 'POST' });
+    const data = await res.json();
+    if(data.error) {
+      if(data.error.includes('equipes_hh') && data.error.includes('relation')) {
+        throw new Error("A tabela 'equipes_hh' não foi encontrada no banco. Por favor, certifique-se de que ela existe no seu Supabase.");
+      }
+      throw new Error(data.error);
+    }
+    showToast(`✅ ${data.registros_afetados} registros H-H sincronizados!`);
+    if(document.getElementById('scr-hh').classList.contains('act')) renderHH();
+  } catch(e) {
+    showToast("❌ Erro H-H: " + e.message);
+  }
+}
+
+async function renderHH(){
+  const container = document.getElementById('hhContent');
+  const dateInput = document.getElementById('hhDate');
+  const dayNameEl = document.getElementById('hhDayName');
+  
+  if(!dateInput.value) dateInput.value = fd(today);
+  const selDate = dateInput.value;
+  const d = new Date(selDate + 'T00:00:00');
+  dayNameEl.textContent = DAY_PT[d.getDay()];
+
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--vmc-gray)">⌛ Carregando distribuição de pessoal...</div>';
+
+  try {
+    const res = await fetch(`/api/hh-data?data=${selDate}`);
+    const rows = await res.json();
+    
+    if (rows.error || !Array.isArray(rows)) {
+      const errorMsg = rows.error || (typeof rows === 'string' ? rows : JSON.stringify(rows));
+      throw new Error(errorMsg);
+    }
+    
+    if(rows.length === 0){
+      container.innerHTML = `
+        <div style="text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:var(--sh)">
+          <div style="font-size:3rem;margin-bottom:10px">📅</div>
+          <div style="font-weight:700;color:var(--vmc-ink)">Sem planejamento H-H para este dia.</div>
+          <div style="font-size:0.8rem;color:var(--vmc-gray);margin-top:5px">Verifique se os dados foram sincronizados ou mude a data.</div>
+        </div>`;
+      return;
+    }
+
+    // Filtrar apenas Planejado por enquanto ou agrupar?
+    // Vamos agrupar por atividade/trecho e mostrar apenas uma linha por serviço (podemos mostrar P e R depois)
+    const grouped = {};
+    rows.forEach(r => {
+      const key = `${r.trecho_id}|${r.atividade}`;
+      if(!grouped[key]) grouped[key] = { trecho: r.trecho_id, atividade: r.atividade, p: null, r: null };
+      if(r.tipo === 'Planejado') grouped[key].p = r;
+      else if(r.tipo === 'Realizado') grouped[key].r = r;
+    });
+
+    const hours = Array.from({length: 16}, (_, i) => (i+6).toString().padStart(2, '0'));
+    
+    let html = `<div class="hh-grid-wrap"><table class="hh-table"><thead><tr><th class="act-col">Serviço / Trecho</th>`;
+    hours.forEach(h => html += `<th>${h}h</th>`);
+    html += `</tr></thead><tbody>`;
+
+    const totals = Array(16).fill(0);
+
+    Object.values(grouped).forEach(item => {
+      const data = item.p || item.r;
+      if(!data) return;
+      
+      const label = item.trecho === '-' ? item.atividade : `T${item.trecho}: ${item.atividade}`;
+      html += `<tr><td class="act-col">${label}</td>`;
+      
+      hours.forEach((h, idx) => {
+        const val = Number(data[`h${h}`]) || 0;
+        totals[idx] += val;
+        let cls = 'hh-cell';
+        if(val === 0) cls += ' val-0';
+        else if(val <= 3) cls += ' val-low';
+        else if(val <= 7) cls += ' val-mid';
+        else cls += ' val-high';
+        
+        html += `<td class="${cls}">${val > 0 ? val : '-'}</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    // Linha de Totais
+    html += `<tr class="hh-total-row"><td class="act-col">TOTAL PESSOAL EM CAMPO</td>`;
+    totals.forEach(val => {
+      html += `<td>${val}</td>`;
+    });
+    html += `</tr></tbody></table></div>`;
+
+    container.innerHTML = html;
+
+  } catch(e) {
+    container.innerHTML = `<div class="alert dan"><div class="alert-ico">⚠️</div><div><div class="alert-t">Erro ao carregar dados</div><div class="alert-b">${e.message}</div></div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════════════════
 function go(name){
-  if(name==='mapa' || name==='dashboard' || name==='lancar' || name==='gantt' || name==='cronograma' || name==='diario' || name==='resumo'){
-    // OK
-  }
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('act'));
   document.getElementById('scr-'+name).classList.add('act');
-  const idx=['dashboard','cronograma','gantt','mapa','resumo','lancar','diario'].indexOf(name);
+  const idx=['dashboard','hh','cronograma', 'gantt','mapa','resumo','lancar','diario'].indexOf(name);
   if(idx>=0) document.querySelectorAll('.bn')[idx].classList.add('act');
-  const renders={dashboard:renderDash,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,diario:renderDiario,resumo:renderResumo};
+  const renders={dashboard:renderDash,hh:renderHH,lancar:renderLancar,gantt:renderGantt,cronograma:renderCron,mapa:renderMapa,diario:renderDiario,resumo:renderResumo};
   if(renders[name]) renders[name]();
   window.scrollTo(0,0);
 }
@@ -2029,6 +2183,10 @@ async function init(){
   const di=document.getElementById('inputDate');
   di.value=fd(today);
   di.addEventListener('change',renderLancar);
+  
+  const hhDate = document.getElementById('hhDate');
+  if(hhDate) hhDate.value = fd(today);
+
   document.getElementById('hdrDate').textContent=`${DAY_PT[today.getDay()]}, ${ptDate(today)}`;
   const mon=getWeekMon(today), fri=new Date(mon); fri.setDate(mon.getDate()+5);
   document.getElementById('hdrWeek').textContent=`Semana ${getWeekNum(today)} · ${ptDate(mon)}–${ptDate(fri)}`;

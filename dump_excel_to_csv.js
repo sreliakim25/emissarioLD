@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 async function exportToCSV() {
-  const filePath = path.join(__dirname, 'Planejamento Previsto.xlsx');
+  const filePath = path.join(__dirname, 'Planejamento Previsto Geral.xlsx');
   const workbook = xlsx.readFile(filePath, { cellDates: true });
   const sheet = workbook.Sheets['Plan'];
   const csv = xlsx.utils.sheet_to_csv(sheet);

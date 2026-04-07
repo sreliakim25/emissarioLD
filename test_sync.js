@@ -9,7 +9,7 @@ const path = require('path');
 async function test() {
   console.log("Iniciando teste de sincronização...");
   try {
-    const excelPath = path.join(__dirname, 'Planejamento Previsto.xlsx');
+    const excelPath = path.join(__dirname, 'Planejamento Previsto Geral.xlsx');
     console.log("Caminho do Excel:", excelPath);
     const result = await parseAndSyncExcel(excelPath);
     console.log("Resultado da sincronização:", result);
