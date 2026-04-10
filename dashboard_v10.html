@@ -981,13 +981,13 @@ function renderDash(){
         <div class="kpi-v" style="font-size:1.15rem">${fmtNum(ov.atu_avg_real, 1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> R / </span>${fmtNum(ov.atu_avg_plan, 1)}<span style="font-size:.65rem;font-weight:400;opacity:.7"> P (m/dia)</span></div>
         <div class="kpi-u" style="${pClrLabel}">Simulação Fim: ${ov.global_proj_end ? ptDate(ov.global_proj_end) : '—'}</div>
       </div>
-      <div class="kpi" style="border-bottom-color:var(--vmc-red)">
+      <div class="kpi" style="border-bottom-color:var(--vmc-red); cursor:help;">
         <div class="kpi-lb">Assentamento</div>
         <div class="kpi-v ${atuRealAll >= atuTotalAll ? 'g' : atuRealAll > 0 ? 'o' : 'r'}" style="font-size:1.15rem">${fmtNum(atuRealAll, 0)}<span style="font-size:.75rem;font-weight:400;opacity:.6"> / ${fmtNum(atuTotalAll, 0)} m</span></div>
         <div class="kpi-u">${fmtPct(ov.pA_atu)} concluído</div>
         <div class="tooltip-box" style="width:280px">
-          <span class="tooltip-title">Resumo por Trecho (Tubulação)</span>
-          <table class="tooltip-table"><thead><tr><th>Trecho</th><th>Real</th><th>Plan.</th></tr></thead><tbody>${trechoTableHtml}</tbody></table>
+          <span class="tooltip-title">Resumo por Trecho</span>
+          <table class="tooltip-table"><thead><tr><th>Trecho</th><th>Realizado</th><th>Previsto</th></tr></thead><tbody>${trechoTableHtml}</tbody></table>
         </div>
       </div>
       <div class="kpi dual">
