@@ -323,7 +323,7 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .tooltip-box::after {
     border-top-color: #F0EAD8;
   }
-  .kpi:hover .tooltip-box, .kpi-side:hover .tooltip-box {
+  .kpi:hover .tooltip-box, .kpi-side:hover .tooltip-box, .kpi-tag:hover + .tooltip-box {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
@@ -2269,49 +2269,7 @@ init();
 </div>
 
 <style>
-  /* ── Tooltips de KPI ── */
-  .kpi-side { position: relative; cursor: help; }
-  .kpi-side:hover .tooltip-box { display: block; }
-  
-  .tooltip-box {
-    display: none;
-    position: absolute;
-    bottom: 115%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #FFFEF9;
-    border: 1.5px solid var(--vmc-ink);
-    border-radius: 12px;
-    padding: 14px;
-    width: 240px;
-    z-index: 1000;
-    box-shadow: var(--sh-lg);
-    text-align: left;
-    font-size: 0.78rem;
-    color: var(--vmc-dark);
-    pointer-events: none;
-    animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  .tooltip-box::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -8px;
-    border-width: 8px;
-    border-style: solid;
-    border-color: var(--vmc-ink) transparent transparent transparent;
-  }
-  .tooltip-title {
-    font-family: 'Playfair Display', serif;
-    font-weight: 700;
-    color: var(--vmc-red);
-    margin-bottom: 8px;
-    font-size: 0.85rem;
-    display: block;
-    border-bottom: 2px solid var(--vmc-bg);
-    padding-bottom: 5px;
-  }
+  /* ── Estilos do Tooltip movidos para o bloco principal ── */
   
   /* Mini Calendário */
   .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 8px; }
@@ -2539,10 +2497,16 @@ function markdownParaHTML(texto) {
 }
 
 document.addEventListener('touchstart', function(e) {
-  if(!e.target.closest('.kpi')) {
-    document.querySelectorAll('.tooltip-box').forEach(b => b.style.display = 'none');
+  if(!e.target.closest('.kpi') && !e.target.closest('.kpi-side')) {
+    document.querySelectorAll('.tooltip-box').forEach(b => {
+      b.style.opacity = '0';
+      b.style.visibility = 'hidden';
+    });
     setTimeout(() => {
-      document.querySelectorAll('.tooltip-box').forEach(b => b.style.removeProperty('display'));
+      document.querySelectorAll('.tooltip-box').forEach(b => {
+        b.style.removeProperty('opacity');
+        b.style.removeProperty('visibility');
+      });
     }, 300);
   }
 }, {passive: true});
