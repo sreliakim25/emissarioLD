@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Emissário Leão Dourado | Viana &amp; Moura</title>
 <script>
-  /* KILL SERVICE WORKERS */
+  /* SERVICE WORKER REGISTRATION */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) {
-        registration.unregister();
-      }
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('SW registrado!', reg);
+      }).catch(err => {
+        console.error('Erro ao registrar SW:', err);
+      });
     });
   }
 </script>
@@ -27,8 +29,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <meta name="description" content="Controle de obra do Emissário Leão Dourado — Viana &amp; Moura Construções">
-<!-- html2pdf.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,44 +238,6 @@ body{font-family:'Crimson Pro',Georgia,serif;background:var(--vmc-bg);color:var(
   .hist-body { padding: 18px; font-size: 0.92rem; color: var(--vmc-dark); display: none; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid #f1f5f9; background: #fff; }
   .hist-item.open .hist-body { display: block; }
   .hist-item.open .hist-hdr { background: #fff; border-bottom: 1px solid #f1f5f9; }
-
-  /* --- PDF EXPORT STYLES (NEW TEMPLATE) --- */
-  #pdf-render-area { position: absolute; left: -9999px; top: 0; }
-  .card-wrapper {
-    position: relative;
-    width: 1281px;
-    height: 659px;
-    flex-shrink: 0;
-    font-family: "Barlow Condensed", sans-serif;
-  }
-  .card-wrapper img {
-    position: absolute;
-    top: 0; left: 0;
-    width: 1281px;
-    height: 659px;
-    display: block;
-  }
-  .campo {
-    position: absolute;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: "Barlow Condensed", sans-serif;
-    font-weight: 900;
-    line-height: 1;
-    text-align: center;
-  }
-  #pdf-date { top: 77px; left: 435px; width: 248px; font-size: 18px; font-weight: 800; color: #1A1A1A; }
-  #asfalto { top: 527px; left: 15px; width: 90px; font-size: 28px; color: #FFFFFF; }
-  #granito { top: 527px; left: 113px; width: 90px; font-size: 28px; color: #FFFFFF; }
-  #escavacao { top: 545px; left: 222px; width: 188px; font-size: 26px; color: #1A1A1A; }
-  #desmonte { top: 545px; left: 429px; width: 188px; font-size: 26px; color: #1A1A1A; }
-  #tubo { top: 538px; left: 643px; width: 202px; font-size: 26px; color: #1A1A1A; }
-  #pv { top: 538px; left: 857px; width: 202px; font-size: 26px; color: #1A1A1A; }
-  #reaterro { top: 497px; left: 1086px; width: 185px; font-size: 38px; color: #FFFFFF; }
-  #resumo-asfalto { top: 576px; left: 1168px; width: 100px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
-  #resumo-tubo { top: 597px; left: 1168px; width: 100px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
-  #resumo-solo { top: 618px; left: 1151px; width: 117px; font-size: 13.5px; color: #FFFFFF; text-align: right; }
 
   /* DUAL KPI */
   .kpi.dual { min-width: 250px; flex: 1.5; }
@@ -1365,7 +1328,6 @@ function renderCron(){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:.8rem;font-weight:${isT?700:400};color:${isT?'var(--vmc-red)':'var(--vmc-dark)'}">${DAY_PT[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}</span>
-            <button onclick="gerarPDFDia('${ds}')" style="background:none;border:none;cursor:pointer;padding:0;font-size:1.1rem;line-height:1;display:flex;align-items:center" title="Gerar Cartões de Trabalho">📄</button>
           </div>
           ${isH ? '<span style="font-size:.62rem;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:10px">FERIADO/DESCANSO</span>' : ''}
           ${isT ? '<span style="font-size:.62rem;background:#fef08a;color:#854d0e;padding:1px 7px;border-radius:10px">HOJE</span>' : ''}
@@ -1408,112 +1370,6 @@ function cronNav(dir){
   cronWeekOffset += dir;
   renderCron();
 }
-
-// ═══════════════════════════════════════════════════
-// EXPORT: CARTÃO DE TRABALHO DIÁRIO (PDF)
-// ═══════════════════════════════════════════════════
-async function gerarPDFDia(dateStr) {
-  const trechosComMetas = [];
-  TRECHOS.forEach(t => {
-    let hasMeta = false;
-    t.atividades.forEach(at => {
-      if(plannedForDay(at, dateStr) > 0.05) hasMeta = true;
-    });
-    if(hasMeta) trechosComMetas.push(t.id);
-  });
-
-  if(trechosComMetas.length === 0) {
-    alert("Não há metas planejadas para este dia.");
-    return;
-  }
-
-  // Se houver mais de um trecho, confirma qual quer gerar ou gera todos
-  for(const tid of trechosComMetas) {
-    await gerarCartaoPDF(dateStr, tid);
-  }
-}
-
-async function gerarCartaoPDF(dateStr, trechoId) {
-  const t = TRECHOS.find(tr => tr.id === trechoId);
-  if(!t) return;
-
-  // Preenche Data
-  const d = new Date(dateStr + 'T12:00:00');
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  document.getElementById('pdf-date').innerText = `${d.getDate()} de ${meses[d.getMonth()]}, ${d.getFullYear()}`;
-
-  // Busca metas do dia para este trecho
-  const metas = {
-    ras: 0, rgr: 0, // Remoção
-    esc: 0, roc: 0, // Escavação / Rocha
-    atu: 0, ipv: 0, // Tubo / PV
-    rea: 0          // Reaterro
-  };
-
-  t.atividades.forEach(at => {
-    const val = plannedForDay(at, dateStr);
-    if(val <= 0.05) return;
-    
-    // Mapeamento por ID ou Nome
-    const nid = at.id.toUpperCase();
-    if(nid.includes('RAS')) metas.ras += val;
-    else if(nid.includes('RGR')) metas.rgr += val;
-    else if(nid.includes('ESC')) metas.esc += val;
-    else if(nid.includes('ROC')) metas.roc += val;
-    else if(nid.includes('ATU')) metas.atu += val;
-    else if(nid.includes('IPV')) metas.ipv += val;
-    else if(nid.includes('REA')) metas.rea += val;
-  });
-
-  // Atualiza IDs no template (Novo Design)
-  const f = (n, d = 1) => fmtNum(n, d);
-  document.getElementById('asfalto').innerText = f(metas.ras);
-  document.getElementById('granito').innerText = f(metas.rgr);
-  document.getElementById('escavacao').innerText = f(metas.esc);
-  document.getElementById('desmonte').innerText = f(metas.roc);
-  document.getElementById('tubo').innerText = f(metas.atu);
-  document.getElementById('pv').innerText = f(metas.ipv);
-  document.getElementById('reaterro').innerText = f(metas.rea);
-
-  // Resumo lateral
-  document.getElementById('resumo-asfalto').innerText = `${f(metas.ras + metas.rgr)} m²`;
-  document.getElementById('resumo-tubo').innerText = `${f(metas.atu)} m`;
-  document.getElementById('resumo-solo').innerText = `${f(metas.esc + metas.roc)} m³`;
-
-  // Título do PDF
-  const filename = `Cartao_Trabalho_T${trechoId}_${dateStr}.pdf`;
-
-  // Gera PDF usando html2pdf
-  const element = document.getElementById('pdf-tpl');
-  const opt = {
-    margin: 0,
-    filename: filename,
-    image: { type: 'jpeg', quality: 1.0 },
-    html2canvas: { 
-      scale: 2, 
-      useCORS: true, 
-      letterRendering: true,
-      width: 1281,
-      height: 659
-    },
-    jsPDF: { 
-      unit: 'px', 
-      format: [1281, 659], 
-      hotfixes: ['px_scaling'] 
-    }
-  };
-  
-  // Exibe temporariamente para o html2pdf capturar corretamente
-  const ra = document.getElementById('pdf-render-area');
-  ra.style.left = '0';
-  
-  try {
-    await html2pdf().set(opt).from(element).save();
-  } finally {
-    ra.style.left = '-9999px';
-  }
-}
-
 
 // ═══════════════════════════════════════════════════
 // RENDER: RESUMO SEMANAL
@@ -1571,8 +1427,10 @@ function renderResumo(){
 
   const lines=[];
   const formatDDMM = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  const ptDateFull = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  
   const title = resumoSel === 'all' ? 'Resumo Geral' : `Resumo Trecho ${resumoSel}`;
-  lines.push(`📊 ${title}`);
+  lines.push(`📊 ${title} - ${ptDateFull(baseDate)}`);
   lines.push(``);
   lines.push(`🗓 Semana ${wn}`);
   lines.push(`${formatDDMM(mon)} → ${formatDDMM(fri)}`);
@@ -2512,36 +2370,7 @@ document.addEventListener('touchstart', function(e) {
 }, {passive: true});
 </script>
 
-<!-- TEMPLATE PDF (OCULTO) -->
-<div id="pdf-render-area">
-  <div class="card-wrapper" id="pdf-tpl">
-    <!-- IMAGEM BASE -->
-    <img src="c.diario.png">
 
-    <!-- DATA -->
-    <div class="campo" id="pdf-date"></div>
-
-    <!-- PAINEL ESQUERDO — REMOÇÃO -->
-    <div class="campo" id="asfalto">0,0</div>
-    <div class="campo" id="granito">0,0</div>
-
-    <!-- CENTRO-ESQUERDO — ESCAVAÇÃO E SOLO -->
-    <div class="campo" id="escavacao">0,0</div>
-    <div class="campo" id="desmonte">0,0</div>
-
-    <!-- CENTRO-DIREITO — TUBOS E CONEXÕES -->
-    <div class="campo" id="tubo">0,0</div>
-    <div class="campo" id="pv">0,0</div>
-
-    <!-- PAINEL DIREITO — REATERRO -->
-    <div class="campo" id="reaterro">0,0</div>
-
-    <!-- RESUMO DE METAS -->
-    <div class="campo" id="resumo-asfalto">0,0 m²</div>
-    <div class="campo" id="resumo-tubo">0,0 m</div>
-    <div class="campo" id="resumo-solo">0,0 m³</div>
-  </div>
-</div>
 </body>
 </html>
 
