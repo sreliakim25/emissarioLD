@@ -1473,7 +1473,7 @@ function renderResumo(){
           const em = d >= 0 ? '🟩' : (d >= -20 ? '🟨' : '🟥');
           const ic = d >= 0 ? '🔼' : '🔻';
           const si = d >= 0 ? '➕' : '➖';
-          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ Finalizado 🟩`;
+          const dt = d !== 0 ? `${Math.round(r)}m / ${Math.round(p)}m (${ic} ${si}${Math.abs(Math.round(d))}m) ${em}` : `${Math.round(r)}m / ${Math.round(p)}m (✔️ Finalizado) 🟩`;
           atuLines.push(`     ↳ T${t.id}: ${dt}`);
         }
       }
@@ -1487,7 +1487,7 @@ function renderResumo(){
           const em = d >= 0 ? '🟩' : (d >= -20 ? '🟨' : '🟥');
           const ic = d >= 0 ? '🔼' : '🔻';
           const si = d >= 0 ? '➕' : '➖';
-          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ Finalizado 🟩`;
+          const dt = d !== 0 ? `${Math.round(r)}m / ${Math.round(p)}m (${ic} ${si}${Math.abs(Math.round(d))}m) ${em}` : `${Math.round(r)}m / ${Math.round(p)}m (✔️ Finalizado) 🟩`;
           repasLines.push(`     ↳ T${t.id}: ${dt}`);
         }
       }
@@ -1509,9 +1509,9 @@ function renderResumo(){
   const atuSinal = atuDelta >= 0 ? '➕' : '➖';
   let atuText = '';
   if (resumoSel === 'all') {
-    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento (Total) ${atuEmoji}` : `✔️ Finalizado (Total) ${atuEmoji}`;
+    atuText = atuDelta !== 0 ? `Assentamento (Total): ${Math.round(atuReal)}m / ${Math.round(atuPrev)}m (${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))}m) ${atuEmoji}` : `Assentamento (Total): ${Math.round(atuReal)}m / ${Math.round(atuPrev)}m (✔️ Finalizado) ${atuEmoji}`;
   } else {
-    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `✔️ Finalizado ${atuEmoji}`;
+    atuText = atuDelta !== 0 ? `Assentamento: ${Math.round(atuReal)}m / ${Math.round(atuPrev)}m (${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))}m) ${atuEmoji}` : `Assentamento: ${Math.round(atuReal)}m / ${Math.round(atuPrev)}m (✔️ Finalizado) ${atuEmoji}`;
   }
 
   const repasDelta = repasReal - repasPrev;
@@ -1521,9 +1521,9 @@ function renderResumo(){
   const repasSinal = repasDelta >= 0 ? '➕' : '➖';
   let repasText = '';
   if (resumoSel === 'all') {
-    repasText = repasDelta !== 0 ? `${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))} m rep. asfáltica (Total) ${repasEmoji}` : `✔️ Finalizado (Total) ${repasEmoji}`;
+    repasText = repasDelta !== 0 ? `Rep. Asfáltica (Total): ${Math.round(repasReal)}m / ${Math.round(repasPrev)}m (${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))}m) ${repasEmoji}` : `Rep. Asfáltica (Total): ${Math.round(repasReal)}m / ${Math.round(repasPrev)}m (✔️ Finalizado) ${repasEmoji}`;
   } else {
-    repasText = repasDelta !== 0 ? `${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))} m rep. asfáltica ${repasEmoji}` : `✔️ Finalizado ${repasEmoji}`;
+    repasText = repasDelta !== 0 ? `Rep. Asfáltica: ${Math.round(repasReal)}m / ${Math.round(repasPrev)}m (${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))}m) ${repasEmoji}` : `Rep. Asfáltica: ${Math.round(repasReal)}m / ${Math.round(repasPrev)}m (✔️ Finalizado) ${repasEmoji}`;
   }
 
   if(resumoSel === 'all') {
@@ -1532,13 +1532,14 @@ function renderResumo(){
     lines.push(`▸ Previsto: ${fmtPct(ov.pP)}`);
     lines.push(`   Realizado: ${fmtPct(ov.pA)}`);
     if (atuPrev > 0 || atuReal > 0) {
-      lines.push(`   ${atuText}`);
+      lines.push(`   ▸ ${atuText}`);
       if (atuLines.length > 0) {
         atuLines.forEach(l => lines.push(l));
       }
     }
     if (repasPrev > 0 || repasReal > 0) {
-      lines.push(`   ${repasText}`);
+      lines.push(``);
+      lines.push(`   ▸ ${repasText}`);
       if (repasLines.length > 0) {
         repasLines.forEach(l => lines.push(l));
       }
@@ -1582,10 +1583,11 @@ function renderResumo(){
       lines.push(`▸ Previsto: ${fmtPct(k.pP)}`);
       lines.push(`   Realizado: ${fmtPct(k.pA)}`);
       if (atuPrev > 0 || atuReal > 0) {
-        lines.push(`   ${atuText}`);
+        lines.push(`   ▸ ${atuText}`);
       }
       if (repasPrev > 0 || repasReal > 0) {
-        lines.push(`   ${repasText}`);
+        lines.push(``);
+        lines.push(`   ▸ ${repasText}`);
       }
       lines.push(``);
       const idpStatus = k.idp>=1?'no prazo':k.idp>=0.95?'no prazo':k.idp>=0.80?'atenção':'atrasado';
