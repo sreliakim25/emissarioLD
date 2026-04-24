@@ -1456,9 +1456,11 @@ function renderResumo(){
   lines.push(`━━━━━━━━━━━━━━`);
   lines.push(``);
 
-  // Calcula ATU (Assentamento) para mostrar o delta
+  // Calcula ATU e REPAS para mostrar o delta
   let atuReal = 0, atuPrev = 0;
   let atuLines = []; // Detalhamento por trecho
+  let repasReal = 0, repasPrev = 0;
+  let repasLines = [];
   if(resumoSel === 'all') {
     TRECHOS.forEach(t => {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
@@ -1471,8 +1473,22 @@ function renderResumo(){
           const em = d >= 0 ? '🟩' : (d >= -20 ? '🟨' : '🟥');
           const ic = d >= 0 ? '🔼' : '🔻';
           const si = d >= 0 ? '➕' : '➖';
-          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ No previsto 🟩`;
+          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ Finalizado 🟩`;
           atuLines.push(`     ↳ T${t.id}: ${dt}`);
+        }
+      }
+      const repas = t.atividades.find(at => at.id && at.id.includes('REPAS'));
+      if(repas) { 
+        const r = actualTotal(repas.id, baseDate);
+        const p = plannedToDate(repas, baseDate);
+        repasReal += r; repasPrev += p;
+        const d = r - p;
+        if (p > 0 || r > 0) {
+          const em = d >= 0 ? '🟩' : (d >= -20 ? '🟨' : '🟥');
+          const ic = d >= 0 ? '🔼' : '🔻';
+          const si = d >= 0 ? '➕' : '➖';
+          const dt = d !== 0 ? `${ic} ${si}${Math.abs(Math.round(d))}m ${em}` : `✔️ Finalizado 🟩`;
+          repasLines.push(`     ↳ T${t.id}: ${dt}`);
         }
       }
     });
@@ -1481,6 +1497,8 @@ function renderResumo(){
     if(t) {
       const atu = t.atividades.find(at => at.id && at.id.includes('ATU'));
       if(atu) { atuReal = actualTotal(atu.id, baseDate); atuPrev = plannedToDate(atu, baseDate); }
+      const repas = t.atividades.find(at => at.id && at.id.includes('REPAS'));
+      if(repas) { repasReal = actualTotal(repas.id, baseDate); repasPrev = plannedToDate(repas, baseDate); }
     }
   }
   
@@ -1491,9 +1509,21 @@ function renderResumo(){
   const atuSinal = atuDelta >= 0 ? '➕' : '➖';
   let atuText = '';
   if (resumoSel === 'all') {
-    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento (Total) ${atuEmoji}` : `✔️ No previsto (Total) ${atuEmoji}`;
+    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento (Total) ${atuEmoji}` : `✔️ Finalizado (Total) ${atuEmoji}`;
   } else {
-    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `✔️ No previsto ${atuEmoji}`;
+    atuText = atuDelta !== 0 ? `${atuIcon} ${atuSinal}${Math.abs(Math.round(atuDelta))} m assentamento ${atuEmoji}` : `✔️ Finalizado ${atuEmoji}`;
+  }
+
+  const repasDelta = repasReal - repasPrev;
+  let repasEmoji = repasDelta >= 0 ? '🟩' : (repasDelta >= -20 ? '🟨' : '🟥');
+  if(repasDelta === 0) repasEmoji = '🟩';
+  const repasIcon = repasDelta >= 0 ? '🔼' : '🔻';
+  const repasSinal = repasDelta >= 0 ? '➕' : '➖';
+  let repasText = '';
+  if (resumoSel === 'all') {
+    repasText = repasDelta !== 0 ? `${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))} m rep. asfáltica (Total) ${repasEmoji}` : `✔️ Finalizado (Total) ${repasEmoji}`;
+  } else {
+    repasText = repasDelta !== 0 ? `${repasIcon} ${repasSinal}${Math.abs(Math.round(repasDelta))} m rep. asfáltica ${repasEmoji}` : `✔️ Finalizado ${repasEmoji}`;
   }
 
   if(resumoSel === 'all') {
@@ -1501,9 +1531,17 @@ function renderResumo(){
     lines.push(``);
     lines.push(`▸ Previsto: ${fmtPct(ov.pP)}`);
     lines.push(`   Realizado: ${fmtPct(ov.pA)}`);
-    lines.push(`   ${atuText}`);
-    if (atuLines.length > 0) {
-      atuLines.forEach(l => lines.push(l));
+    if (atuPrev > 0 || atuReal > 0) {
+      lines.push(`   ${atuText}`);
+      if (atuLines.length > 0) {
+        atuLines.forEach(l => lines.push(l));
+      }
+    }
+    if (repasPrev > 0 || repasReal > 0) {
+      lines.push(`   ${repasText}`);
+      if (repasLines.length > 0) {
+        repasLines.forEach(l => lines.push(l));
+      }
     }
     lines.push(``);
     const idpStatus = ov.idp>=1?'no prazo':ov.idp>=0.95?'no prazo':ov.idp>=0.80?'atenção':'atrasado';
@@ -1543,7 +1581,12 @@ function renderResumo(){
       lines.push(``);
       lines.push(`▸ Previsto: ${fmtPct(k.pP)}`);
       lines.push(`   Realizado: ${fmtPct(k.pA)}`);
-      lines.push(`   ${atuText}`);
+      if (atuPrev > 0 || atuReal > 0) {
+        lines.push(`   ${atuText}`);
+      }
+      if (repasPrev > 0 || repasReal > 0) {
+        lines.push(`   ${repasText}`);
+      }
       lines.push(``);
       const idpStatus = k.idp>=1?'no prazo':k.idp>=0.95?'no prazo':k.idp>=0.80?'atenção':'atrasado';
       const idpEmoji = k.idp>=0.95?'🟩':k.idp>=0.80?'🟨':'🟥';
