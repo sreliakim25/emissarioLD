@@ -13,7 +13,7 @@ const atividadeMeta = {
   "Assentamento de Tubulação (m)": { sigla: "ATU", un: "m", nome: "Assentamento de Tubulação" },
   "Implantação de PV (und)": { sigla: "IPV", un: "und", nome: "Implantação de PV" },
   "Reaterro Compactado (m³)": { sigla: "REA", un: "m³", nome: "Reaterro Compactado" },
-  "Reposição Pav. Asfáltico (m²)": { sigla: "REPAS", un: "m²", nome: "Reposição Pav. Asfáltico" },
+  "Reposição Pav. Asfáltico (m)": { sigla: "REPAS", un: "m", nome: "Reposição Pav. Asfáltico" },
   "Reposição Pav. Granítico (m²)": { sigla: "REPGR", un: "m²", nome: "Reposição Pav. Granítico" }
 };
 
@@ -129,10 +129,22 @@ async function syncRealizado() {
     }
 
     let meta = null;
+    const strLower = currentAtividadeStr.toLowerCase();
     for (const key of Object.keys(atividadeMeta)) {
-      if (currentAtividadeStr.toLowerCase().includes(key.toLowerCase().substring(0, 10))) {
-        meta = atividadeMeta[key];
-        break;
+      if (strLower.includes(key.toLowerCase().substring(0, 10))) {
+        if (strLower.includes('reposição') || strLower.includes('remoção')) {
+          const isAsfaltico = strLower.includes('asfáltico') || strLower.includes('asfaltico');
+          const isGranitico = strLower.includes('granitico') || strLower.includes('granítico');
+          const keyAsfaltico = key.toLowerCase().includes('asfáltico') || key.toLowerCase().includes('asfaltico');
+          const keyGranitico = key.toLowerCase().includes('granitico') || key.toLowerCase().includes('granítico');
+          if ((isAsfaltico && keyAsfaltico) || (isGranitico && keyGranitico)) {
+            meta = atividadeMeta[key];
+            break;
+          }
+        } else {
+          meta = atividadeMeta[key];
+          break;
+        }
       }
     }
 
@@ -147,7 +159,7 @@ async function syncRealizado() {
       const cNum = parseInt(colStr);
       const cell = row.getCell(cNum);
       const cellValueExcel = getCellValue(cell.value);
-      const cellValueDb = Number(dbDataForSigla[dateFormatted]) || 0;
+      let cellValueDb = Number(dbDataForSigla[dateFormatted]) || 0;
 
       // Se ambos forem 0, ignora
       if (cellValueDb === 0 && cellValueExcel === 0) continue;
